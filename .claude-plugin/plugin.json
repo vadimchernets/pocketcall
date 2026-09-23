@@ -1,0 +1,12 @@
+{
+  "name": "pocketcall",
+  "description": "Make the remote you already pay for usable by a person who is not a programmer: check the six things that silently decide whether a machine can be left working, walk through the four minutes before you leave the house, and answer like someone is reading on a phone. No bridges, no tunnels, no API keys, no third-party sign-in.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Vadym Chernets"
+  },
+  "homepage": "https://github.com/vadimchernets/pocketcall",
+  "repository": "https://github.com/vadimchernets/pocketcall",
+  "license": "Apache-2.0",
+  "keywords": ["remote-control", "mobile", "readiness", "handover", "accessibility", "non-programmers"]
+}

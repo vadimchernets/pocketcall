@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""Write the card a person takes with them.
+
+Everything a phone can and cannot do, on one page, in words that survive being read in a
+corridor. It is written to a file and printed to the screen, because the whole point of this
+plugin is that a screen you are not sitting in front of is no use.
+
+The card is deliberately short and deliberately negative in places. A person who knows the
+four things that do not work will not lose an afternoon to any of them.
+
+Run:  python3 card.py [--dir <project directory>] [--out <file>] [--lang en]
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+from pathlib import Path
+
+EN = """POCKETCALL — the card
+Written {date}. Keep it where you can see it, not where you file it.
+
+WHAT THE PHONE CAN DO while the work runs on your computer
+  See the same conversation, as it happens.
+  Send a new task, and it starts now.
+  Answer the question it asks you.
+  Say yes or no when it asks permission.
+  Send a photo or a file from the phone, with or without a note.
+
+WHAT THE PHONE CANNOT DO
+  It cannot wake your computer. A sleeping machine does no work at all.
+  It cannot hand you a finished document. That is why everything finished goes into
+  {out}/ as a file, and you open the file with your normal phone app.
+  It cannot turn on the modes that act without asking. Those stay at your desk on purpose.
+  It cannot tell you that your allowance ran out. It will simply go quiet.
+
+BEFORE YOU LEAVE THE HOUSE
+  1. Power plugged in, lid open, sleep set to never.
+  2. The window on the computer stays open. Close it and the phone goes dark in seconds.
+  3. The Claude app on the phone, signed in as you, notifications allowed.
+  4. From the next room, send one message and get one answer. If that works, the evening works.
+
+IF THE PHONE GOES QUIET
+  It is one of four things, in this order of likelihood:
+  the computer went to sleep · the window was closed · the allowance ran out ·
+  the phone silenced the notification (focus mode, battery saver).
+  None of them is a fault of yours, and none of them loses your work.
+
+ONE RULE THAT IS NOT ABOUT CONVENIENCE
+  Never sign in to your Claude account inside some other company's app or site that
+  offers you a remote. Handing over your sign-in is against the terms, and the ones that
+  ask for it are the ones you should walk away from. The remote you are using is the one
+  that came with what you already pay for.
+
+WHAT IS STORED WHERE, SO YOU ARE NOT SURPRISED
+  While the remote is on, the conversation is kept on the company's servers so that all
+  your screens can show the same thing. Your files stay on your computer, and the work is
+  done there. Those are two different things, and only the first one leaves the house.
+"""
+
+
+def build(out_dir: str, today: str) -> str:
+    return EN.format(date=today, out=out_dir)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Write the card to carry.")
+    ap.add_argument("--dir", default=".", help="the project directory")
+    ap.add_argument("--out", default="", help="where to write the card")
+    ap.add_argument("--out-dir", default="pocket-out", help="name of the handover folder")
+    ap.add_argument("--date", default="", help="date to stamp on the card")
+    args = ap.parse_args()
+
+    today = args.date or dt.date.today().strftime("%d.%m.%Y")
+    text = build(args.out_dir, today)
+    target = Path(args.out) if args.out else Path(args.dir) / "POCKETCALL-CARD.txt"
+    target.write_text(text, encoding="utf-8")
+    print(text)
+    print(f"Saved to {target}. Print it. A card on the wall beats a file you will not open.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

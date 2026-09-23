@@ -1,0 +1,25 @@
+{
+  "name": "pocketcall",
+  "owner": {
+    "name": "Vadym Chernets"
+  },
+  "metadata": {
+    "description": "Pocketcall: leave the computer working and take the phone, without finding out in town that it never started.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "pocketcall",
+      "source": "./",
+      "description": "Six silent reasons a remote session never comes up, checked before you leave; the four minutes at the door; and how to answer a person who is reading on a phone.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Vadym Chernets"
+      },
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/vadimchernets/pocketcall",
+      "keywords": ["remote-control", "mobile", "readiness", "handover"],
+      "category": "productivity"
+    }
+  ]
+}

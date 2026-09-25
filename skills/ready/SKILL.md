@@ -17,6 +17,10 @@ inside this skill: that is the next step and the person does it knowingly.
    - the handover rule: show the two lines before you write them into CLAUDE.md;
    - the sleep setting: you cannot change it and must not try. Tell the person which
      setting and let them open it themselves. Then run the check again and read the result.
+   - the shared folder: if the check found none, help them pick one inside Google Drive or
+     Dropbox — not iCloud Drive if the phone in their pocket is an Android one — and run the
+     check again with `--shared` and that folder. Make a folder inside their drive only where
+     they tell you to, and never move, rename or open what is already in there.
 3. If the version or one of the quiet killers came back NOT, stop. There is no point
    continuing: the remote will not come up, and it will not say why.
 4. When everything is ok, say the one sentence that matters and then stop:
@@ -34,3 +38,7 @@ inside this skill: that is the next step and the person does it knowingly.
 - Do not offer any third-party remote, and if the person mentions one that asks them to sign
   in to their Claude account inside it, say plainly that handing a sign-in to another company
   is against the terms and that they should not.
+- Do not say the shared folder is syncing. Nothing on this machine can see that: a drive can
+  be signed out, paused, full or quietly stuck and the folder looks the same. Read out what
+  the check does see — the folder, the number of files, the date of the last change — and give
+  them the test that proves it: one photo in from the phone, watched arriving here.

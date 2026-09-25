@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
 """Pocketcall readiness check.
 
-Six things decide whether an evening away from the desk works. Five of them fail silently:
+Seven things decide whether an evening away from the desk works. Six of them fail silently:
 the person walks out of the house believing the remote is on, and finds out in town that it
-is not. This script looks at all six on this machine and says, in plain words, which ones
+is not. This script looks at all seven on this machine and says, in plain words, which ones
 are not ready and what to do about each.
 
 Nothing here talks to the network, reads a conversation, or changes a setting. It reads
-local files and runs `claude --version` and, on a Mac, `pmset -g custom`. It prints a report
-for a person, and with --json the same findings for a program.
+local files, runs `claude --version` and, on a Mac, `pmset -g custom`, and lists the names
+and dates of the shared folder without opening anything inside it. It prints a report for a
+person, and with --json the same findings for a program.
 
-Run:  python3 check.py [--json] [--dir <project directory>]
+Run:  python3 check.py [--json] [--dir <project directory>] [--shared <shared folder>]
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 # Environment variables that each switch off the feature-flag evaluation Remote Control
@@ -41,6 +44,23 @@ OUT_DIR = "pocket-out"
 RULE_MARK = "pocket-out"
 
 MIN_VERSION = (2, 1, 196)  # below this, a custom base URL was still allowed; above it, refused
+
+# Where a folder that both the phone and this computer can see usually lives. First match wins,
+# so the desktop clients come before the Mac's newer CloudStorage layout only where they are
+# genuinely the same folder. Nothing here proves a folder is syncing; see check_sync.
+CLOUD_PLACES = (
+    ("Google Drive", "Library/CloudStorage/GoogleDrive-*"),
+    ("Google Drive", "Google Drive"),
+    ("Dropbox", "Library/CloudStorage/Dropbox*"),
+    ("Dropbox", "Dropbox"),
+    ("OneDrive", "Library/CloudStorage/OneDrive*"),
+    ("OneDrive", "OneDrive*"),
+    ("iCloud Drive", "Library/Mobile Documents/com~apple~CloudDocs"),
+)
+
+# A whole cloud drive can hold a hundred thousand files. We only need enough to say a number
+# and a date, so the walk stops here and says it stopped.
+SCAN_CAP = 2000
 
 
 def run(cmd: list[str]) -> str:
@@ -238,11 +258,161 @@ def check_handover(project: Path) -> list[dict]:
     return found
 
 
-def collect(project: Path) -> list[dict]:
+def service_of(folder: Path, home: Path) -> str:
+    """The name the person uses for the drive a folder sits in, or "" when we do not know it."""
+    for service, pattern in CLOUD_PLACES:
+        for hit in sorted(home.glob(pattern)):
+            try:
+                if folder == hit or folder.is_relative_to(hit):
+                    return service
+            except (OSError, ValueError):
+                continue
+    return ""
+
+
+def find_shared(project: Path, named: str = "", home: Path | None = None):
+    """The folder the phone and this computer share, and the drive behind it.
+
+    Named by hand if the person named it; otherwise the handover folder when it already lives
+    inside a cloud drive, and otherwise the cloud drive itself. Returns (folder, service),
+    with folder None when nothing on this machine looks like a shared folder at all.
+    """
+    home = (home or Path.home()).expanduser()
+    if named:
+        folder = Path(named).expanduser()
+        return folder, service_of(folder, home)
+
+    drives: list[tuple[Path, str]] = []
+    seen: set[str] = set()
+    for service, pattern in CLOUD_PLACES:
+        for hit in sorted(home.glob(pattern)):
+            if hit.is_dir() and str(hit) not in seen:
+                seen.add(str(hit))
+                drives.append((hit, service))
+
+    out = project / OUT_DIR
+    for drive, service in drives:
+        try:
+            if out.is_dir() and out.resolve().is_relative_to(drive.resolve()):
+                return out, service
+        except (OSError, ValueError):
+            continue
+    return drives[0] if drives else (None, "")
+
+
+def folder_facts(folder: Path, cap: int = SCAN_CAP) -> dict:
+    """How many files are in there and when anything last changed. Names and dates only.
+
+    Nothing is opened and nothing is written. A file that a cloud drive is keeping in the
+    cloud still has a name and a date on disk, which is all this needs.
+    """
+    files = 0
+    newest = 0.0
+    newest_name = ""
+    capped = False
+    stack = [folder]
+    while stack:
+        here = stack.pop()
+        try:
+            entries = list(os.scandir(here))
+        except OSError:
+            continue
+        for entry in entries:
+            name = os.path.basename(entry.path)
+            if name.startswith("."):
+                continue
+            try:
+                if entry.is_dir(follow_symlinks=False):
+                    stack.append(Path(entry.path))
+                    continue
+                stamp = entry.stat(follow_symlinks=False).st_mtime
+            except OSError:
+                continue
+            files += 1
+            if stamp > newest:
+                newest, newest_name = stamp, name
+            if files >= cap:
+                capped = True
+                stack = []
+                break
+    return {"files": files, "newest": newest or None, "newest_name": newest_name,
+            "capped": capped}
+
+
+def when_words(stamp: float, now: float) -> str:
+    """When something last changed, in the words a person would use out loud."""
+    moment = dt.datetime.fromtimestamp(stamp)
+    days = (dt.datetime.fromtimestamp(now).date() - moment.date()).days
+    clock = moment.strftime("%H:%M")
+    if days <= 0:
+        return f"today at {clock}"
+    if days == 1:
+        return f"yesterday at {clock}"
+    if days < 14:
+        return f"{days} days ago, on {moment.strftime('%d.%m.%Y')}"
+    return f"on {moment.strftime('%d.%m.%Y')}"
+
+
+def check_sync(project: Path, named: str = "", home: Path | None = None,
+               now: float | None = None) -> dict:
+    """The folder the phone drops a photo into and the work reads at home.
+
+    Whether a drive is really syncing that folder at this minute is not knowable from this
+    machine: the app can be signed out, paused, out of space or quietly stuck, and the folder
+    looks the same either way. So this check states only what is on the disk — the folder is
+    here, it holds this many files, the last one changed then — and hands the person the one
+    test that does prove it. It never says the word synced about something it has not seen.
+    """
+    folder, service = find_shared(project, named, home)
+    if folder is None:
+        return {
+            "id": "sync",
+            "ok": False,
+            "says": "Found no folder on this machine that a phone also sees.",
+            "do": "This is how a photo taken in town reaches the work at home. Make a folder "
+                  "in Google Drive or Dropbox, put the same app on the phone, and run this "
+                  "check again with --shared and the folder. Not iCloud Drive if the phone "
+                  "you carry is an Android one: iCloud has no app there.",
+        }
+    if not folder.is_dir():
+        return {
+            "id": "sync",
+            "ok": False,
+            "says": f"The shared folder {folder} is not here.",
+            "do": "Anything the phone puts in a folder by that name goes nowhere you will "
+                  "find it. Open the drive's app, read the folder's real name, and run this "
+                  "check again with --shared and that name.",
+        }
+
+    facts = folder_facts(folder)
+    count = f"{facts['files']}+" if facts["capped"] else str(facts["files"])
+    where = f"{service} folder" if service else "Shared folder"
+    if facts["newest"]:
+        last = when_words(facts["newest"], now if now is not None else time.time())
+        says = (f"{where}: {folder} — {count} file{'' if count == '1' else 's'}, "
+                f"last change {last} ({facts['newest_name']}).")
+    else:
+        says = f"{where}: {folder} — empty, so there is no date to show you."
+    do = ("Whether the drive is really carrying this folder to your phone right now, nothing "
+          "on this machine can prove. The test takes a second and you do it before you leave: "
+          "put one photo in from the phone and watch the line above change. If it does not, "
+          "the sync is stuck and you would have been dropping things into nowhere all evening.")
+    if service == "iCloud Drive":
+        do += (" And this is iCloud Drive, which has no Android app at all: if the phone in "
+               "your pocket is an Android one, choose Google Drive or Dropbox instead.")
+    if not service:
+        do = ("Nothing on this machine says this folder is shared with anything — it may be "
+              "an ordinary folder that only this computer can see. Check in the drive's own "
+              "app that this is the folder it syncs. ") + do
+    return {"id": "sync", "ok": True, "says": says, "do": do}
+
+
+def collect(project: Path, shared: str = "", home: Path | None = None) -> list[dict]:
     items = [check_place(project), check_version()]
     items += check_quiet_killers(project)
     items.append(check_sleep())
     items += check_handover(project)
+    items.append(check_sync(project, shared, home))
     return items
 
 
@@ -261,8 +431,9 @@ def report(items: list[dict]) -> str:
                      "and the phone joins by scanning the code it shows.")
     lines.append("")
     lines.append("What this check cannot see: whether you are signed in on the phone, whether "
-                 "notifications are allowed there, and how much of your allowance is left. "
-                 "Those you look at yourself, and the evening says how.")
+                 "notifications are allowed there, whether the shared folder is really syncing "
+                 "at this minute, and how much of your allowance is left. Those you look at "
+                 "yourself, and the evening says how.")
     return "\n".join(lines)
 
 
@@ -270,8 +441,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Check whether this machine can be left working alone.")
     ap.add_argument("--json", action="store_true", help="print findings as JSON")
     ap.add_argument("--dir", default=".", help="the project directory to check")
+    ap.add_argument("--shared", default="",
+                    help="the folder the phone also sees, when it is not found by itself")
     args = ap.parse_args()
-    items = collect(Path(args.dir))
+    items = collect(Path(args.dir), args.shared)
     if args.json:
         print(json.dumps({"ready": all(i["ok"] for i in items), "checks": items},
                          ensure_ascii=False, indent=1))

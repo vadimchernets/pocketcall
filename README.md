@@ -3,13 +3,13 @@
 **Leave the computer working, take the phone, and do not find out in town that it never
 started.** Pocketcall does not connect your phone to anything. The remote already exists and
 comes with the subscription you already pay for. What Pocketcall adds is the part nobody
-ships: the six things that silently decide whether an unattended machine works at all, the
-four minutes at the door, and the discipline of answering someone who is reading four lines
-on a phone in a corridor.
+ships: the seven things that silently decide whether an unattended machine works at all, the
+four minutes at the door and the thirty seconds you repeat every time after, and the
+discipline of answering someone who is reading four lines on a phone in a corridor.
 
 Pocketcall is an independent open-source project. Not affiliated with Anthropic.
 
-**Status: v0.1.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
+**Status: v0.2.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
 teacher, a realtor, a bookkeeper — and who have a paid personal subscription, no API keys, no
 server, and no intention of acquiring either.
 
@@ -25,6 +25,8 @@ announce themselves:
 - notifications for "I need an answer to continue" were never turned on, so the work waits
   politely for six hours;
 - the finished document is sitting in a terminal, which a phone cannot read;
+- the shared folder stopped syncing three days ago, so the photo taken in town is still on the
+  phone, looking sent;
 - the person approves something in a corridor that they could not actually see.
 
 None of those is hard. All of them are invisible. Pocketcall makes them visible before you
@@ -41,21 +43,22 @@ leave, not after.
 
 | what | when you use it |
 |---|---|
-| `ready` | before leaving: checks the six silent things and says, in plain words, which are not ready |
-| `leave` | the first time, and any time it matters: six steps ending with one real message answered from the phone |
+| `ready` | before leaving: checks the seven silent things and says, in plain words, which are not ready |
+| `leave` | the first time, and any time it matters: six steps ending with one real message answered from the phone, then the thirty seconds at the door you repeat every evening |
 | `handover` | standing guidance for the whole time you are away: short answers, finished work in a file |
 
 You can also run the check by hand, without the plugin:
 
 ```
-python3 scripts/check.py            # a report for a person
-python3 scripts/check.py --json     # the same findings for a program
-python3 scripts/card.py             # the card to print and keep where you can see it
+python3 scripts/check.py                      # a report for a person
+python3 scripts/check.py --json               # the same findings for a program
+python3 scripts/check.py --shared ~/Dropbox/phone   # when the shared folder is not found by itself
+python3 scripts/card.py                       # the card to print and keep where you can see it
 ```
 
 Both scripts are standard library only, read-only, and talk to nothing over the network.
 
-## The six things `ready` looks at
+## The seven things `ready` looks at
 
 1. **Where you are.** A remote session has to start from a work folder. The trust question it
    needs is never remembered for your home folder.
@@ -71,6 +74,11 @@ Both scripts are standard library only, read-only, and talk to nothing over the 
    settings for them is not something a program should do.
 6. **The handover.** Is there a folder your phone can see, and does your rules file say that
    finished work goes there?
+7. **The shared folder.** The folder you drop a photo into from the street and the work reads
+   at home — Google Drive or Dropbox, and not iCloud Drive if the phone in your pocket runs
+   Android. `ready` finds it, says how many files are in it and when anything last changed,
+   and says plainly that it cannot see whether the drive is carrying it anywhere. Point it at
+   the right folder with `--shared` if it guessed wrong.
 
 ## What it refuses to pretend
 
@@ -81,6 +89,12 @@ Both scripts are standard library only, read-only, and talk to nothing over the 
   assistant app. Anything in a store under the other name belongs to someone else.
 - **You cannot be told that your allowance ran out.** At the moment it runs out, nothing can
   speak. So the card says it in advance instead.
+- **Nothing here can tell you a folder is syncing.** A drive app can be signed out, paused,
+  out of space, or stuck on one file, and the folder on disk looks exactly the same in all four
+  cases. So `ready` reports what is actually visible — the folder, the number of files, the
+  date of the last change — and hands you the only thing that proves it: put one photo in from
+  the phone before you leave and watch that date change. A check that guessed here would be
+  worse than no check, because it would be believed.
 - **Getting finished work back to the phone is not promised by anything.** Sending a photo or
   a file *from* the phone is. That asymmetry is exactly why the handover folder exists, and
   why `leave` makes you open one real file on the phone before you trust the arrangement.

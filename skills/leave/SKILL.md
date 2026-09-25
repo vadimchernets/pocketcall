@@ -1,6 +1,6 @@
 ---
 name: leave
-description: Walk the person through the four minutes before they go out of the door, ending with one real message answered from the phone. Use when they are about to leave and want the work to keep going, or the first time they try the remote.
+description: Walk the person through the four minutes before they go out of the door, ending with one real message answered from the phone, and after that the thirty seconds at the door they repeat every time. Use when they are about to leave and want the work to keep going, when they say they are going out with the phone, or the first time they try the remote.
 ---
 
 # Before you walk out of the door
@@ -40,11 +40,35 @@ Go one step at a time and wait for the person after each.
    from the phone once. Then finish something small and put it in the handover folder, and
    have them open that file on the phone. If all three happened, the evening works.
 
+## The thirty seconds at the door — every time, not only the first time
+
+The six steps above happen once. This part repeats: every evening the person walks out, read
+these five out loud and wait for a yes on each one. Out loud is the whole trick — a person who
+says "plugged in" looks at the cable, and a person who reads it does not.
+
+1. **Plugged in.** A battery that runs out is a computer switched off, and from town they
+   cannot plug it back in.
+2. **Lid open, sleep set to never.** Never "close the lid and go".
+3. **This window stays open.** The conversation lives inside it. Close it and the phone goes
+   dark within seconds and nothing says why.
+4. **The shared folder is there, and they know its name.** Say the path the `ready` check
+   printed for it, not the word "folder" — that is where a photo taken in town lands and
+   where finished work comes back. If `ready` found no such folder, that is tonight's job
+   before the door, not after it.
+5. **Phone in hand before the door, not after it.** Signed in as them, notifications allowed,
+   and one message sent from where they are standing right now.
+
+Then say the two things that are true and unwelcome: nobody can tell them the allowance has
+run out, and nobody can tell them the shared folder has stopped syncing. Both simply go quiet.
+The second one has a one-second test and they do it now, not in town: put one photo in from
+the phone and see it arrive here.
+
 ## Then give them the card
 
 Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/card.py" --dir .`, show the card, and tell them
-to print it. The four reasons the phone goes quiet are on it, and a person who knows those
-four does not panic in a corridor.
+to print it. The five lines at the door and the four reasons the phone goes quiet are on it,
+and a person who has those on a wall does not panic in a corridor. If the `ready` check named
+a shared folder, pass it along with `--shared` so the card carries the real path.
 
 ## What you must not say
 

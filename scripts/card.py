@@ -8,7 +8,7 @@ plugin is that a screen you are not sitting in front of is no use.
 The card is deliberately short and deliberately negative in places. A person who knows the
 four things that do not work will not lose an afternoon to any of them.
 
-Run:  python3 card.py [--dir <project directory>] [--out <file>] [--lang en]
+Run:  python3 card.py [--dir <project directory>] [--out <file>] [--shared <shared folder>]
 """
 
 from __future__ import annotations
@@ -33,12 +33,22 @@ WHAT THE PHONE CANNOT DO
   {out}/ as a file, and you open the file with your normal phone app.
   It cannot turn on the modes that act without asking. Those stay at your desk on purpose.
   It cannot tell you that your allowance ran out. It will simply go quiet.
+  It cannot tell you that the shared folder stopped syncing either. The photo you send
+  simply sits on the phone, looking sent.
 
-BEFORE YOU LEAVE THE HOUSE
-  1. Power plugged in, lid open, sleep set to never.
-  2. The window on the computer stays open. Close it and the phone goes dark in seconds.
-  3. The Claude app on the phone, signed in as you, notifications allowed.
-  4. From the next room, send one message and get one answer. If that works, the evening works.
+THIRTY SECONDS AT THE DOOR — say these five out loud, every time you go
+  1. Plugged in. A battery that runs out is a computer switched off, and from town you
+     cannot plug it back in.
+  2. Lid open, sleep set to never. A closed lid is sleep, and sleep is a stop.
+  3. The window with the work in it stays open. Close it and the phone goes dark in seconds.
+  4. The shared folder is there: {shared}
+     That is where a photo you take in town lands, and where finished work comes back.
+     This computer worked that path out by itself. If it is not the folder you use, cross
+     it out and write yours in with a pen — the card is yours, not the computer's.
+  5. Phone in your hand before the door, not after it: signed in as you, notifications
+     allowed, one message sent from where you are standing and one answer back.
+  If all five are true, the evening works. Saying them out loud is the point: a person who
+  says "plugged in" looks at the cable, and a person who reads it does not.
 
 IF THE PHONE GOES QUIET
   It is one of four things, in this order of likelihood:
@@ -59,8 +69,23 @@ WHAT IS STORED WHERE, SO YOU ARE NOT SURPRISED
 """
 
 
-def build(out_dir: str, today: str) -> str:
-    return EN.format(date=today, out=out_dir)
+def build(out_dir: str, today: str, shared: str = "") -> str:
+    return EN.format(date=today, out=out_dir,
+                     shared=shared or "the one your drive syncs and your phone can open")
+
+
+def detect_shared(project: str) -> str:
+    """Ask the readiness check where the shared folder is, so the card names a real path.
+
+    A person reading "your shared folder" does not know which one is meant. If the check
+    cannot find it either, the card says so in words instead of naming the wrong thing.
+    """
+    try:
+        import check
+        folder, _ = check.find_shared(Path(project))
+    except (ImportError, OSError, ValueError):
+        return ""
+    return str(folder) if folder and folder.is_dir() else ""
 
 
 def main() -> int:
@@ -68,11 +93,12 @@ def main() -> int:
     ap.add_argument("--dir", default=".", help="the project directory")
     ap.add_argument("--out", default="", help="where to write the card")
     ap.add_argument("--out-dir", default="pocket-out", help="name of the handover folder")
+    ap.add_argument("--shared", default="", help="the folder the phone also sees")
     ap.add_argument("--date", default="", help="date to stamp on the card")
     args = ap.parse_args()
 
     today = args.date or dt.date.today().strftime("%d.%m.%Y")
-    text = build(args.out_dir, today)
+    text = build(args.out_dir, today, args.shared or detect_shared(args.dir))
     target = Path(args.out) if args.out else Path(args.dir) / "POCKETCALL-CARD.txt"
     target.write_text(text, encoding="utf-8")
     print(text)

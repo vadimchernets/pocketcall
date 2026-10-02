@@ -64,6 +64,33 @@ case "$os" in
     if [ -z "$PY" ]; then
       p=$(command -v python3 2>/dev/null) && real "$p" && PY=$p
     fi
+    # A Python installed after Claude Code started: its PATH (and Git Bash's) is the one from before the
+    # install until Claude Code restarts. Look where python.org's installer puts it, newest first - the
+    # launcher, the per-user folders, the install paths in the registry - as hooks/python.ps1 does.
+    if [ -z "$PY" ]; then
+      la=$(cygpath -u "${LOCALAPPDATA:-}" 2>/dev/null)
+      sr=$(cygpath -u "${SYSTEMROOT:-}" 2>/dev/null)
+      for p in "${la:+$la/Programs/Python/Launcher/py.exe}" "${sr:+$sr/py.exe}"; do
+        [ -n "$p" ] && [ -f "$p" ] && real "$p" -3 && exec "$p" -3 "$script" "$@"
+      done
+      pf=$(cygpath -u "${PROGRAMFILES:-}" 2>/dev/null)
+      found=$(
+        for d in "${la:-/nonexistent}"/Programs/Python/Python3* "${pf:-/nonexistent}"/Python3*; do
+          [ -f "$d/python.exe" ] && printf '%s\t%s\n' "$(basename "$d" | tr -cd 0-9)" "$d/python.exe"
+        done | sort -rn | cut -f2-
+        for k in 'HKCU\Software\Python\PythonCore' 'HKLM\Software\Python\PythonCore' \
+                 'HKLM\Software\WOW6432Node\Python\PythonCore'; do
+          MSYS2_ARG_CONV_EXCL='*' reg.exe query "$k" /s /v ExecutablePath 2>/dev/null |
+            sed -n 's/^ *ExecutablePath *REG_SZ *//p' | tr -d '\r' | sort -r |
+            while IFS= read -r w; do cygpath -u "$w" 2>/dev/null; done
+        done
+      )
+      while IFS= read -r p; do
+        [ -n "$p" ] && [ -f "$p" ] && real "$p" && { PY=$p; break; }
+      done <<EOF2
+$found
+EOF2
+    fi
     ;;
   *)
     for c in python3 python; do
@@ -81,6 +108,6 @@ if [ -n "$PY" ]; then
 fi
 
 if [ "$mode" = say ]; then
-  echo "$plugin is paused: this computer has no working Python 3 yet, so $plugin does nothing for now. Tell the person in one line and do step 0 first (in the Poly A1 folder it is the first step of START-HERE): Mac - xcode-select --install, then press Install in Apple's window and wait 5-10 minutes; Windows - winget install -e --id Python.Python.3.12 --scope user; Linux - sudo apt-get install -y python3. Then restart Claude Code."
+  echo "$plugin is paused: this computer has no working Python 3 yet, so $plugin does nothing for now. Tell the person in one line and do step 0 first (in the Poly A1 folder it is the first step of START-HERE): Mac - xcode-select --install, then press Install in Apple's window and wait 5-10 minutes; Windows - winget install -e --id Python.Python.3.12 --scope user; Linux - sudo apt-get install -y python3. No restart of Claude Code is needed after that."
 fi
 exit 0

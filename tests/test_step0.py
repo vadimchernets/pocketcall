@@ -193,6 +193,34 @@ class StepZero(unittest.TestCase):
         code, out, err = self.run_guard("say", {"STEP0_OS": "MINGW64_NT-10.0"})
         self.assertEqual((code, out.strip()), (0, "ran by python"), err)
 
+    def just_installed(self):
+        """A python.org Python installed after Claude Code started: in %LOCALAPPDATA%, not on the PATH it got."""
+        local = os.path.join(self.tmp, "Local")
+        for version, works in (("Python39", False), ("Python312", True)):
+            os.makedirs(os.path.join(local, "Programs", "Python", version))
+            tool(os.path.join(local, "Programs", "Python", version), "python.exe",
+                 'echo %s >> "%s"\n[ "$1" = -c ] && exit %d\necho "ran by %s"' % (version, self.ran, 0 if works else 1, version))
+        return local
+
+    def test_windows_git_bash_finds_a_python_installed_after_claude_code_started(self):
+        self.fake_python("python", works=False)    # the Store stub is all the old PATH has
+        tool(self.bin, "cygpath", 'echo "$2"')     # Git Bash's path converter; the test paths are POSIX already
+        for name in ("basename", "tr", "sort", "cut", "sed", "printf", "dirname"):
+            for d in ("/usr/bin", "/bin"):
+                if os.path.exists(os.path.join(d, name)) and not os.path.exists(os.path.join(self.bin, name)):
+                    os.symlink(os.path.join(d, name), os.path.join(self.bin, name))
+        code, out, err = self.run_guard("say", {"STEP0_OS": "MINGW64_NT-10.0", "LOCALAPPDATA": self.just_installed()})
+        self.assertEqual((code, out.strip()), (0, "ran by Python312"), err)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "PowerShell 7 is not installed here")
+    def test_in_powershell_a_python_installed_after_claude_code_started_is_found(self):
+        self.fake_python("python", works=False)    # the Store stub is all the old PATH has
+        p = subprocess.run([shutil.which("pwsh"), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                            "-Command", "& '%s' %s say '%s'" % (os.path.join(ROOT, "hooks", "python.ps1"), PLUGIN, self.script)],
+                           capture_output=True, text=True, timeout=60,
+                           env={"PATH": self.bin + os.pathsep + "/bin", "HOME": self.tmp, "LOCALAPPDATA": self.just_installed()})
+        self.assertEqual(p.stdout.strip(), "ran by Python312", p.stderr)
+
     def test_a_skill_passes_the_script_relative_to_the_plugin_root(self):
         root = os.path.join(self.tmp, "plugin root")
         os.makedirs(os.path.join(root, "hooks"))

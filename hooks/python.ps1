@@ -49,17 +49,14 @@ function Quote-Argument([string]$a) {   # one argument of a Windows command line
 }
 
 $check = 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)'
-foreach ($candidate in @('python', 'py -3', 'python3')) {
-  $words = $candidate.Split(' ')
-  $exe = Get-Command $words[0] -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-  if (-not $exe) { continue }
-  $pre = @($words | Select-Object -Skip 1)
-  try { & $exe.Source @pre -c $check 2>$null | Out-Null } catch { continue }
-  if ($LASTEXITCODE -ne 0) { continue }
+function Try-Python([string]$file, [string[]]$pre) {   # run the script with it and exit, if -c proves it is Python 3.8+
+  if (-not $file) { return }
+  try { & $file @pre -c $check 2>$null | Out-Null } catch { return }
+  if ($LASTEXITCODE -ne 0) { return }
   # Not `& python ...`: PowerShell would read the script's output and write it again in its own encoding.
   # A process started this way gets PowerShell's own stdin, stdout and stderr, byte for byte.
   $psi = New-Object System.Diagnostics.ProcessStartInfo
-  $psi.FileName = $exe.Source
+  $psi.FileName = $file
   $psi.Arguments = (@($pre) + @($script) + @($rest) | ForEach-Object { Quote-Argument $_ }) -join ' '
   $psi.UseShellExecute = $false
   $psi.RedirectStandardInput = ($piped.Count -gt 0)
@@ -82,7 +79,54 @@ foreach ($candidate in @('python', 'py -3', 'python3')) {
   exit $proc.ExitCode
 }
 
+# 1. The PATH this process got: python.org's `python`, the launcher `py -3`, then `python3`.
+foreach ($candidate in @('python', 'py -3', 'python3')) {
+  $words = $candidate.Split(' ')
+  $exe = Get-Command $words[0] -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($exe) { Try-Python $exe.Source @($words | Select-Object -Skip 1) }
+}
+
+# 2. A Python installed after Claude Code started (02.10.2026). An installer writes the new PATH into the
+# registry, but Claude Code - and every hook and shell it starts - keeps the PATH it was started with, so the
+# Python of step 0 is not on it until Claude Code restarts. So look where python.org's installer (and winget,
+# which runs it) puts Python, newest first: the launcher, the per-user folders, and the install paths every
+# installer registers (PEP 514). The Store stub lives in WindowsApps, never in these places, and `-c` rules it
+# out anyway.
+function Version-Of([string]$name) {   # "Python312" / "3.12-32" -> 312, for newest-first order
+  $d = ($name -replace '-.*$', '') -replace '[^0-9]', ''
+  if ($d) { return [int]$d } else { return 0 }
+}
+$local = $env:LOCALAPPDATA
+$launchers = @()
+if ($local) { $launchers += Join-Path $local 'Programs\Python\Launcher\py.exe' }
+if ($env:SystemRoot) { $launchers += Join-Path $env:SystemRoot 'py.exe' }
+foreach ($l in $launchers) { if (Test-Path -LiteralPath $l -PathType Leaf) { Try-Python $l @('-3') } }
+$found = @()
+foreach ($base in @($(if ($local) { Join-Path $local 'Programs\Python' }), $env:ProgramFiles)) {
+  if (-not $base -or -not (Test-Path -LiteralPath $base)) { continue }
+  Get-ChildItem -LiteralPath $base -Directory -Filter 'Python3*' -ErrorAction SilentlyContinue |
+    Sort-Object { Version-Of $_.Name } -Descending |
+    ForEach-Object { $found += Join-Path $_.FullName 'python.exe' }
+}
+foreach ($key in @('HKCU:\Software\Python\PythonCore', 'HKLM:\Software\Python\PythonCore',
+                   'HKLM:\Software\WOW6432Node\Python\PythonCore')) {
+  Get-ChildItem -LiteralPath $key -ErrorAction SilentlyContinue |
+    Where-Object { $_.PSChildName -like '3*' } |
+    Sort-Object { Version-Of $_.PSChildName } -Descending |
+    ForEach-Object {
+      $ip = Get-ItemProperty -LiteralPath (Join-Path $_.PSPath 'InstallPath') -ErrorAction SilentlyContinue
+      if ($ip -and $ip.ExecutablePath) { $found += [string]$ip.ExecutablePath }
+      elseif ($ip -and $ip.'(default)') { $found += Join-Path ([string]$ip.'(default)') 'python.exe' }
+    }
+}
+$tried = @{}
+foreach ($f in $found) {
+  if ($tried.ContainsKey($f)) { continue }
+  $tried[$f] = $true
+  if (Test-Path -LiteralPath $f -PathType Leaf) { Try-Python $f @() }
+}
+
 if ($mode -eq 'say') {
-  Write-Output "$plugin is paused: this computer has no working Python 3 yet, so $plugin does nothing for now. Tell the person in one line and do step 0 first (in the Poly A1 folder it is the first step of START-HERE): Mac - xcode-select --install, then press Install in Apple's window and wait 5-10 minutes; Windows - winget install -e --id Python.Python.3.12 --scope user; Linux - sudo apt-get install -y python3. Then restart Claude Code."
+  Write-Output "$plugin is paused: this computer has no working Python 3 yet, so $plugin does nothing for now. Tell the person in one line and do step 0 first (in the Poly A1 folder it is the first step of START-HERE): Mac - xcode-select --install, then press Install in Apple's window and wait 5-10 minutes; Windows - winget install -e --id Python.Python.3.12 --scope user; Linux - sudo apt-get install -y python3. No restart of Claude Code is needed after that."
 }
 exit 0

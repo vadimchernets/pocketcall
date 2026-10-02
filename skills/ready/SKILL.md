@@ -1,16 +1,29 @@
 ---
 name: ready
 description: Check whether this machine can be left working while its owner walks away, and say in plain words what is not ready. Use when the person asks to work from their phone, to leave the computer running, to check the remote, or says they are about to go out.
+allowed-tools: Bash(sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/check.py *) PowerShell(& "${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1" pocketcall say scripts/check.py *)
 ---
 
 # Is this machine ready to be left alone?
+
+## Running pocketcall's scripts (Mac, Linux, Windows)
+
+Every script command on this page is written for the **Bash** tool and starts with
+`sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/…`. If your shell tool is **PowerShell** (Windows
+without Git Bash), run the same command with only its start changed: `& "${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1"`
+in place of `sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh"`, everything after it unchanged, on one line; text for
+standard input goes in as `@'…'@ | & "${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1" …` instead of `<<'EOF'`.
+Never call `python3`, `python` or `py` yourself: the launcher finds a real Python 3.8+ (`python`,
+then `py -3`, then `python3`) and never starts the Microsoft Store or Apple stub. If it answers
+with one line saying pocketcall "is paused" because this computer has no working Python 3 yet, tell the
+person that in one plain line and go on by hand — never show them a Python error and stop.
 
 Run the check, read it out loud, fix what the person agrees to fix. Do not turn the remote on
 inside this skill: that is the next step and the person does it knowingly.
 
 ## Do this
 
-1. Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/check.py" --dir .` and show the person the
+1. Run `sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/check.py --dir .` and show the person the
    lines that came back, unchanged. Do not summarise away a failure.
 2. For each line marked NOT, offer to do the part you can do, one at a time, and wait:
    - the handover folder: make it, and say where it is;

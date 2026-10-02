@@ -1,9 +1,22 @@
 ---
 name: leave
 description: Walk the person through the four minutes before they go out of the door, ending with one real message answered from the phone, and after that the thirty seconds at the door they repeat every time. Use when they are about to leave and want the work to keep going, when they say they are going out with the phone, or the first time they try the remote.
+allowed-tools: Bash(sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/card.py *) PowerShell(& "${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1" pocketcall say scripts/card.py *)
 ---
 
 # Before you walk out of the door
+
+## Running pocketcall's scripts (Mac, Linux, Windows)
+
+Every script command on this page is written for the **Bash** tool and starts with
+`sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/…`. If your shell tool is **PowerShell** (Windows
+without Git Bash), run the same command with only its start changed: `& "${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1"`
+in place of `sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh"`, everything after it unchanged, on one line; text for
+standard input goes in as `@'…'@ | & "${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1" …` instead of `<<'EOF'`.
+Never call `python3`, `python` or `py` yourself: the launcher finds a real Python 3.8+ (`python`,
+then `py -3`, then `python3`) and never starts the Microsoft Store or Apple stub. If it answers
+with one line saying pocketcall "is paused" because this computer has no working Python 3 yet, tell the
+person that in one plain line and go on by hand — never show them a Python error and stop.
 
 Four minutes, six steps, and the last one is the only proof that counts: a message sent from
 the phone in the next room and answered here. Everything before it is preparation; without it
@@ -65,7 +78,7 @@ the phone and see it arrive here.
 
 ## Then give them the card
 
-Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/card.py" --dir .`, show the card, and tell them
+Run `sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/card.py --dir .`, show the card, and tell them
 to print it. The five lines at the door and the four reasons the phone goes quiet are on it,
 and a person who has those on a wall does not panic in a corridor. If the `ready` check named
 a shared folder, pass it along with `--shared` so the card carries the real path.

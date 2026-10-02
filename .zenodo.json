@@ -1,0 +1,20 @@
+{
+  "title": "Pocketcall: make a remote-controlled computer usable by a non-programmer",
+  "description": "Pocketcall is a Claude Code plugin that makes a remote computer the person already pays for usable by a person who is not a programmer. It checks the seven things that silently decide whether a machine can be left working, including the shared folder a photo from town lands in, walks through the four minutes before leaving the house and the thirty seconds at the door, and answers as if someone is reading on a phone. No bridges, no tunnels, no API keys, no third-party sign-in.",
+  "creators": [
+    {
+      "name": "Chernets, Vadym"
+    }
+  ],
+  "upload_type": "software",
+  "license": "apache-2.0",
+  "keywords": [
+    "claude-code-plugin",
+    "remote-control",
+    "mobile",
+    "readiness",
+    "handover",
+    "accessibility",
+    "non-programmers"
+  ]
+}

@@ -22,7 +22,9 @@ HOOKS = os.path.join(ROOT, "hooks", "hooks.json")
 has_hooks = unittest.skipUnless(os.path.exists(HOOKS), "this plugin has no hooks, only the launcher for its skills")
 SKILLS = sorted(glob.glob(os.path.join(ROOT, "skills", "*", "SKILL.md")))
 SH = 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" %s say ' % PLUGIN
-PS = '& "${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1" %s say ' % PLUGIN
+# PowerShell: the launcher's path bare - Claude Code checks a `& "..."` call as an operation it cannot read and
+# asks for it whatever the rule says (2.1.288), while a bare path is matched against the rule like any command.
+PS = '${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1 %s say ' % PLUGIN
 
 
 def tool(folder, name, body):
@@ -239,7 +241,8 @@ class StepZero(unittest.TestCase):
                     self.assertTrue(rule in head or wild in head, "%s: allowed-tools lacks %s" % (name, rule))
             if scripts or "python.sh" in head:
                 self.assertIn("## Running %s's scripts (Mac, Linux, Windows)" % PLUGIN, body, name)
-                self.assertIn('& "${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1"', body, name)
+                self.assertIn(PS.strip(), body.replace("\n", " "), name)
+                self.assertIn('& "${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1"', body, name)   # for a path with a space
 
 
 if __name__ == "__main__":

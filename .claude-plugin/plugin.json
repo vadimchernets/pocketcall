@@ -1,7 +1,7 @@
 {
   "name": "pocketcall",
   "description": "Make the remote you already pay for usable by a person who is not a programmer: check the seven things that silently decide whether a machine can be left working, including the shared folder a photo from town lands in, walk through the four minutes before you leave the house and the thirty seconds at the door, and answer like someone is reading on a phone. No bridges, no tunnels, no API keys, no third-party sign-in.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
     "name": "Vadym Chernets"
   },

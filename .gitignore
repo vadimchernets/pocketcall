@@ -3,3 +3,4 @@ __pycache__/
 .DS_Store
 pocket-out/
 POCKETCALL-CARD.txt
+dist/

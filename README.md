@@ -1,5 +1,7 @@
 # Pocketcall
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23107735.svg)](https://doi.org/10.5281/zenodo.23107735)
+
 **Leave the computer working, take the phone, and do not find out in town that it never
 started.** Pocketcall does not connect your phone to anything. The remote already exists and
 comes with the subscription you already pay for. What Pocketcall adds is the part nobody

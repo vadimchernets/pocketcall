@@ -217,7 +217,9 @@ class StepZero(unittest.TestCase):
         command = "@'\n%s\n'@ | & \"%s/hooks/python.ps1\" %s say scripts/x.py list --folder \"a b\"" % (self.WORD, root, PLUGIN)
         p = subprocess.run([shutil.which("pwsh"), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
                             "-Command", command], capture_output=True, text=True, timeout=60, cwd=self.tmp)
-        self.assertEqual((p.returncode, p.stdout.strip()), (3, "args ['list', '--folder', 'a b'] " + self.WORD), p.stderr)
+        # `-Command` ends with 1 for any failed last command: "not 0" is what a failing script can promise there
+        self.assertNotEqual(p.returncode, 0)
+        self.assertEqual(p.stdout.strip(), "args ['list', '--folder', 'a b'] " + self.WORD, p.stderr)
 
     def test_every_skill_runs_its_scripts_through_the_launcher(self):
         """No skill calls python3, python or py itself; every script it names exists; its allowed-tools let both the

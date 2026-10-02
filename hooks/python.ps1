@@ -63,9 +63,18 @@ foreach ($candidate in @('python', 'py -3', 'python3')) {
   $psi.Arguments = (@($pre) + @($script) + @($rest) | ForEach-Object { Quote-Argument $_ }) -join ' '
   $psi.UseShellExecute = $false
   $psi.RedirectStandardInput = ($piped.Count -gt 0)
+  $noBom = New-Object System.Text.UTF8Encoding $false
+  $consoleIn = $null
+  if ($piped.Count -gt 0) {
+    # Windows PowerShell 5.1 (.NET Framework) opens the child's stdin in the console's input encoding and writes
+    # its byte order mark first; PowerShell 7 lets us name the encoding. Either way: UTF-8, no BOM.
+    if ($psi.PSObject.Properties['StandardInputEncoding']) { $psi.StandardInputEncoding = $noBom }
+    else { try { $consoleIn = [Console]::InputEncoding; [Console]::InputEncoding = $noBom } catch { $consoleIn = $null } }
+  }
   $proc = [System.Diagnostics.Process]::Start($psi)
+  if ($consoleIn) { try { [Console]::InputEncoding = $consoleIn } catch { } }
   if ($piped.Count -gt 0) {   # text piped into this file: hand it to the script as UTF-8, then close stdin
-    $bytes = (New-Object System.Text.UTF8Encoding $false).GetBytes((($piped | ForEach-Object { [string]$_ }) -join "`n") + "`n")
+    $bytes = $noBom.GetBytes((($piped | ForEach-Object { [string]$_ }) -join "`n") + "`n")
     $proc.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
     $proc.StandardInput.Close()
   }

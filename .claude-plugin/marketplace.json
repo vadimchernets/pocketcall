@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Pocketcall: leave the computer working and take the phone, without finding out in town that it never started.",
-    "version": "0.3.1"
+    "version": "0.3.2"
   },
   "plugins": [
     {
       "name": "pocketcall",
       "source": "./",
-      "description": "Seven silent reasons an evening away never works, checked before you leave; the four minutes at the door and the thirty seconds you repeat every time; how to answer a person who is reading on a phone; and, on a work account, the built-in remote, a cloud session or SSH and tmux - whichever the company allows. In five languages.",
-      "version": "0.3.1",
+      "description": "Seven silent reasons an evening away never works, checked before you leave; the four minutes at the door and the thirty seconds you repeat every time; how to answer a person who is reading on a phone; and, on a work account, the built-in remote, a cloud session, SSH and tmux, or the company's own relay with an end-to-end encrypted approval card on the phone and in Telegram - whichever the company allows. In five languages.",
+      "version": "0.3.2",
       "author": {
         "name": "Vadym Chernets"
       },

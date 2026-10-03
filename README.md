@@ -11,10 +11,10 @@ discipline of answering someone who is reading four lines on a phone in a corrid
 
 Pocketcall is an independent open-source project. Not affiliated with Anthropic.
 
-**Status: v0.3.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
+**Status: v0.3.2.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
 teacher, a realtor, a bookkeeper — with a paid personal subscription, no API keys, no server, and
 no intention of acquiring either; and, since 0.3, for the same people on a work account, where
-the company decides what is allowed (see [At work](#at-work-three-branches)). It speaks English,
+the company decides what is allowed (see [At work](#at-work-four-branches)). It speaks English,
 Spanish, Portuguese, Russian and Ukrainian.
 
 ## Why this exists
@@ -64,6 +64,7 @@ it and deletes their saved data.
 |---|---|
 | `ready` | before leaving: checks the seven silent things and says, in plain words, which are not ready |
 | `leave` | the first time, and any time it matters: six steps ending with one real message answered from the phone, then the thirty seconds at the door you repeat every evening |
+| `remote` | branch D: pair with the company's relay and messenger; while you are away every permission question arrives on the phone as an approval card with Yes, No and Show the diff |
 | `handover` | standing guidance for the whole time you are away: short answers, finished work in a file |
 
 You can also run the check by hand, without the plugin:
@@ -77,7 +78,7 @@ python3 scripts/check.py --trusted-devices    # your organization requires Trust
 python3 scripts/card.py --lang es             # the card to print and keep where you can see it
 ```
 
-Both scripts are standard library only, read-only, and talk to nothing over the network.
+`check.py` and `card.py` are standard library only, read-only, and talk to nothing over the network; the branch D scripts are standard library only too and talk only to the company's relay and messenger.
 
 ## The seven things `ready` looks at
 
@@ -108,10 +109,10 @@ Both scripts are standard library only, read-only, and talk to nothing over the 
    and gives you the one-photo test that proves the drive carries it. Point it at the right
    folder with `--shared` if it guessed wrong.
 
-## At work: three branches
+## At work: four branches
 
 On a Team or Enterprise plan, or wherever a company decides how Claude Code is reached, `ready`
-reads the check and walks the person down one of three branches. Every command is from Claude
+reads the check and walks the person down one of four branches. Every command is from Claude
 Code's own documentation (code.claude.com/docs: remote-control, claude-code-on-the-web, channels,
 managed-settings).
 
@@ -128,6 +129,14 @@ managed-settings).
   remote nor cloud sessions are offered there, so the phone becomes a terminal into the person's
   own computer: Tailscale on both, SSH on the computer, `claude` inside `tmux`, and Blink Shell
   or Termius on the phone. Every word still goes through the company's own provider.
+- **D — the phone remote without a terminal (new in 0.3.2).** The company starts its own relay
+  with one command; each computer pairs with it by a link or QR code; while the person is away,
+  every permission question arrives on the phone, end-to-end encrypted and with a push, as an
+  **approval card**: the full command word for word, every file it names, and three buttons —
+  **Yes**, **No**, **Show the diff**. The same card can go to the company's Telegram, where only
+  the people on its allowlist can press the buttons. Claude Code keeps running on the computer, on
+  the company's own provider and sign-in, so D works on API keys, Bedrock, Google Cloud, Foundry,
+  ZDR and HIPAA. See [Branch D](#branch-d-the-phone-remote-without-a-terminal).
 
 **Channels** (Telegram, Discord, iMessage into the running session) work with a claude.ai
 sign-in or a Console API key; on Team and Enterprise an Owner turns them on (Admin settings,
@@ -140,6 +149,36 @@ gets a no, or "wait until I am at the desk" — it is on the card in every langu
 note from the street goes into a queue, not into action**: something to chase goes to Chasecall,
 a long job for tonight goes to Nightcall through the handover folder, and with neither installed
 it still lands in that folder word for word.
+
+## Branch D: the phone remote without a terminal
+
+```
+python3 scripts/relay.py --port 8787 --push https://ntfy.example.com/approvals   # once, on a company server
+python3 scripts/remote.py pair --relay https://relay.example.com                  # once per computer: the phone link
+python3 scripts/remote.py telegram --token <bot token> --allow <Telegram user id> # the card in Telegram too
+python3 scripts/remote.py away        # leaving: questions go to the phone
+python3 scripts/remote.py test        # one real card, answered from the phone
+python3 scripts/remote.py back        # at the desk: no cards, no push
+```
+
+- **The relay** (`scripts/relay.py`) is standard library only: no database, no Redis, no object
+  store. It serves the phone page and forwards sealed boxes. Both the computer and the phone connect
+  outward to it. Put it behind the company's HTTPS (its reverse proxy, or `tailscale serve 8787`).
+- **End-to-end encryption.** The pairing key is 32 random bytes in the phone link after `#`, the
+  part a browser never sends to a server. Each card and each answer is sealed encrypt-then-MAC
+  (HMAC-SHA256 in counter mode, HMAC-SHA256 tag) by `scripts/seal.py` on the computer and by the
+  same construction in WebCrypto on the phone (`scripts/phone/seal.js`). The relay sees a room name
+  derived from the key and ciphertext, nothing else.
+- **Push.** `--push` points at an ntfy server (the company's own, or ntfy.sh): the ntfy app on the
+  phone rings with one line, "A decision is waiting". No command, file or name is in it. At the desk
+  (`remote.py back`) nothing is sent at all.
+- **The approval card** is built by `scripts/approval_card.py` from the question Claude Code is about
+  to ask (the plugin's `PermissionRequest` hook, `scripts/approve_hook.py`). A card that had to be
+  cut to fit the phone or the message comes without Yes. The first answer from any path decides; no
+  answer in ten minutes leaves the question on the screen at the desk.
+- **The company's messenger.** With Channels already on (`channelsEnabled`, `allowedChannelPlugins`,
+  which `ready` reads), a channel carries the conversation and branch D carries the decisions; with
+  a bot of the company's own, `remote.py telegram` puts the card in the chat the team already reads.
 
 ## What is true about an evening away
 
@@ -157,9 +196,9 @@ it still lands in that folder word for word.
   on its own; the way back is a file in the handover folder, and `leave` has you open one real
   file on the phone before you rely on it.
 - **Your sign-in stays yours.** Never sign in to your assistant account inside another
-  company's app or site that offers you a remote: handing over a sign-in or a session token is
-  against the terms of the service you pay for. Pocketcall asks for no account, no token and no
-  sign-in.
+  company's app or site that offers you a remote: a sign-in is for its owner alone (Anthropic's
+  Consumer Terms of Service, anthropic.com/legal/consumer-terms, on account credentials). Pocketcall
+  asks for no account, no token and no sign-in, and branch D runs on the company's own relay.
 
 ## What leaves your house, and what does not
 
@@ -175,6 +214,9 @@ language is `--lang`, then `POCKETCALL_LANG`, then the system's. The code and it
 English; `python3 scripts/check_language.py` keeps Cyrillic inside `lang/`.
 
 ## Tests
+
+`tests/test_remote.py` runs a relay on a local port, a stand-in Telegram, and the phone's sealing
+code in Node, and proves a card goes through sealed and comes back as Yes or No.
 
 ```
 python3 -m pytest -q -p no:cacheprovider tests

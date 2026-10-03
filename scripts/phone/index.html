@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pocketcall</title>
+<style>
+  body { font: 17px/1.4 system-ui, sans-serif; margin: 0; padding: 16px; background: #f6f5f2; color: #1b1b1b; }
+  .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 14px; box-shadow: 0 1px 3px #0002; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #f0efe9; padding: 8px; border-radius: 8px; font-size: 14px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  button { flex: 1; font-size: 18px; padding: 12px; border: 0; border-radius: 10px; }
+  .yes { background: #1f7a3a; color: #fff; } .no { background: #a32020; color: #fff; } .diff { background: #ddd; }
+  .quiet { color: #666; }
+</style>
+</head>
+<body>
+<h1>Pocketcall</h1>
+<p id="state" class="quiet">Connecting…</p>
+<div id="cards"></div>
+<script src="seal.js"></script>
+<script>
+"use strict";
+(async () => {
+  const state = document.getElementById("state");
+  const box = document.getElementById("cards");
+  let secret = (location.hash.match(/k=([A-Za-z0-9_-]+)/) || [])[1];
+  try { if (secret) localStorage.setItem("pocketcall", secret); else secret = localStorage.getItem("pocketcall"); } catch (e) {}
+  if (!secret) { state.textContent = "Open the link this computer printed with remote.py pair."; return; }
+  const pair = await PocketSeal.pair(secret);
+  const shown = new Set();
+
+  function el(tag, text, cls) { const e = document.createElement(tag); if (text) e.textContent = text; if (cls) e.className = cls; return e; }
+
+  async function answer(id, say, node) {
+    const r = await fetch(`r/${pair.room}/answer`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, box: await pair.seal({ id, say }) }) });
+    node.replaceChildren(el("p", r.ok ? (say === "yes" ? "Allowed." : "Declined.") : "This question was already answered."));
+  }
+
+  function render(card) {
+    const node = el("div", "", "card");
+    node.append(el("strong", card.tool), el("p", "Command, word for word:"), el("pre", card.command));
+    node.append(el("p", card.files.length ? "Files:" : "No files named."));
+    if (card.files.length) { const ul = el("ul"); card.files.forEach((f) => ul.append(el("li", f))); node.append(ul); }
+    if (card.folder) node.append(el("p", "Folder: " + card.folder, "quiet"));
+    const diff = el("pre", card.diff || "No changes to show."); diff.hidden = true;
+    const row = el("div", "", "row");
+    if (card.complete) { const y = el("button", "Yes", "yes"); y.onclick = () => answer(card.id, "yes", node); row.append(y); }
+    else node.append(el("p", "Too large to read in full here: answer at the desk, or No."));
+    const n = el("button", "No", "no"); n.onclick = () => answer(card.id, "no", node);
+    const d = el("button", "Show the diff", "diff"); d.onclick = () => { diff.hidden = !diff.hidden; };
+    row.append(n, d); node.append(row, diff);
+    box.prepend(node);
+  }
+
+  async function tick() {
+    try {
+      const r = await fetch(`r/${pair.room}/asks`, { cache: "no-store" });
+      const data = await r.json();
+      state.textContent = data.asks.length ? "A decision is waiting." : "Paired. Nothing waits for you.";
+      for (const a of data.asks) {
+        if (shown.has(a.id)) continue;
+        shown.add(a.id);
+        try { const card = await pair.open(a.box); if (card.id === a.id) render(card); } catch (e) { /* not ours */ }
+      }
+    } catch (e) { state.textContent = "The relay is out of reach. Trying again…"; }
+  }
+  tick(); setInterval(tick, 3000);
+})();
+</script>
+</body>
+</html>

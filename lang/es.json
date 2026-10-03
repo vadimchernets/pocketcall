@@ -135,5 +135,25 @@
     "  de la empresa para que todas sus pantallas muestren lo mismo. Sus archivos se quedan en",
     "  su ordenador, y el trabajo se hace allí. Son dos cosas distintas, y solo la primera sale de casa.",
     ""
-  ]
+  ],
+
+  "approve_title": "Claude Code pide tu decisión",
+  "approve_command": "Comando, palabra por palabra:",
+  "approve_files": "Archivos:",
+  "approve_no_files": "- ningún archivo",
+  "approve_folder": "Carpeta: {path}",
+  "approve_yes": "Sí",
+  "approve_no": "No",
+  "approve_diff": "Ver los cambios",
+  "approve_cut": "Demasiado largo para leerlo entero aquí, así que no hay Sí: responde No, o en el escritorio.",
+  "approve_no_diff": "No hay cambios que mostrar.",
+  "approve_denied": "Rechazado desde el teléfono.",
+  "remote_paired": "Emparejado. Abre este enlace en el teléfono y añádelo a la pantalla de inicio:",
+  "remote_telegram": "Telegram listo: las tarjetas de aprobación llegan a tu chat y solo las personas permitidas pueden pulsar los botones.",
+  "remote_not_paired": "Este ordenador aún no está emparejado: remote.py pair --relay <dirección>, o remote.py telegram.",
+  "remote_away": "Fuera: las preguntas de permiso van al teléfono.",
+  "remote_back": "En el escritorio: las preguntas se quedan en esta pantalla, sin tarjetas ni avisos.",
+  "remote_off": "El emparejamiento se ha borrado de este ordenador.",
+  "remote_status": "Vías: {paths}. {state}",
+  "remote_test_answer": "Respuesta del teléfono: {answer}"
 }

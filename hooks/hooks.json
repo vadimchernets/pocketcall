@@ -1,0 +1,17 @@
+{
+  "description": "pocketcall's hook. When Claude Code is about to ask for permission and this computer is paired (scripts/remote.py) and marked away, the approval card goes to the phone - the company relay's page and the company's messenger - with Yes, No and Show the diff; the first answer decides. At the desk or not paired it prints nothing and the ordinary dialog appears. It goes through the step 0 guard and stays quiet without Python.",
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/python.sh\" pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/approve_hook.py\"\ntrap { continue }; & ([scriptblock]::Create((Get-Content -Raw -LiteralPath \"${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1\"))) pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/approve_hook.py\"",
+            "timeout": 900
+          }
+        ]
+      }
+    ]
+  }
+}

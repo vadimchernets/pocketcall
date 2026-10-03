@@ -137,5 +137,25 @@
     "  your screens can show the same thing. Your files stay on your computer, and the work is",
     "  done there. Those are two different things, and only the first one leaves the house.",
     ""
-  ]
+  ],
+
+  "approve_title": "Claude Code asks for your decision",
+  "approve_command": "Command, word for word:",
+  "approve_files": "Files:",
+  "approve_no_files": "- no files named",
+  "approve_folder": "Folder: {path}",
+  "approve_yes": "Yes",
+  "approve_no": "No",
+  "approve_diff": "Show the diff",
+  "approve_cut": "Too long to read in full here, so there is no Yes: answer No, or at the desk.",
+  "approve_no_diff": "No changes to show.",
+  "approve_denied": "Declined from the phone.",
+  "remote_paired": "Paired. Open this link on the phone and add it to the home screen:",
+  "remote_telegram": "Telegram is set: approval cards go to your chat, and only the people you allowed can press the buttons.",
+  "remote_not_paired": "This computer is not paired yet: remote.py pair --relay <address>, or remote.py telegram.",
+  "remote_away": "Away: permission questions go to the phone.",
+  "remote_back": "At the desk: questions stay on this screen, no cards, no push.",
+  "remote_off": "The pairing is forgotten on this computer.",
+  "remote_status": "Paths: {paths}. {state}",
+  "remote_test_answer": "Answer from the phone: {answer}"
 }

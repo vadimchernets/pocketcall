@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.2 — 2026-10-03
+
+- **Branch D: the phone remote without a terminal.** `scripts/relay.py` is the company's own relay, started
+  with one command (standard library only: no database, Redis or object store); it serves the phone page and
+  forwards sealed boxes it cannot open. `scripts/remote.py pair --relay <url>` prints the phone link (a QR code
+  with `qrencode`), its key after `#`, which a browser never sends. Cards and answers are sealed encrypt-then-MAC
+  (HMAC-SHA256 counter mode and tag) by `scripts/seal.py` and by the same construction in WebCrypto on the phone
+  (`scripts/phone/seal.js`). `--push` rings an ntfy app with "A decision is waiting" and nothing else; at the desk
+  (`remote.py back`) nothing is sent. Claude Code stays on the computer, on the company's provider and sign-in,
+  so D works on API keys, Bedrock, Google Cloud, Foundry, ZDR and HIPAA. New skill `remote`; `ready` names D.
+- **The approval card.** The plugin's first hook, `PermissionRequest` (`scripts/approve_hook.py`, through the
+  step 0 guard), sends the question Claude Code is about to ask, while the person is away, as a card
+  (`scripts/approval_card.py`): the full command word for word, every file it names, and Yes / No / Show the
+  diff. The same card goes to the company's Telegram (`remote.py telegram --token ... --allow <id>`), where a
+  press from anyone off the allowlist is ignored. A card cut to fit the screen or the message comes without Yes,
+  and a Yes to it counts as No. The first answer decides; none in ten minutes leaves the question at the desk.
+  Card words in all five languages.
+- README: the account-sharing line now names its source (Anthropic's Consumer Terms of Service).
+- `tests/test_remote.py`: a relay on a local port, a stand-in Telegram, the phone's sealing code in Node.
+
 ## 0.3.1 — 2026-10-03
 
 - **Wording: no disclaimers.** Pocketcall says what works as a capability. The card's "what the phone cannot

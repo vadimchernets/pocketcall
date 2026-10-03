@@ -135,5 +135,25 @@
     "  para que todas as suas telas mostrem o mesmo. Os seus arquivos ficam no seu computador,",
     "  e o trabalho é feito lá. São duas coisas diferentes, e só a primeira sai de casa.",
     ""
-  ]
+  ],
+
+  "approve_title": "O Claude Code pede a sua decisão",
+  "approve_command": "Comando, palavra por palavra:",
+  "approve_files": "Arquivos:",
+  "approve_no_files": "- nenhum arquivo",
+  "approve_folder": "Pasta: {path}",
+  "approve_yes": "Sim",
+  "approve_no": "Não",
+  "approve_diff": "Ver as mudanças",
+  "approve_cut": "Longo demais para ler inteiro aqui, por isso não há Sim: responda Não, ou na mesa.",
+  "approve_no_diff": "Nenhuma mudança para mostrar.",
+  "approve_denied": "Recusado pelo telefone.",
+  "remote_paired": "Pareado. Abra este link no telefone e adicione-o à tela inicial:",
+  "remote_telegram": "Telegram pronto: os cartões de aprovação vão para o seu chat e só as pessoas permitidas podem tocar nos botões.",
+  "remote_not_paired": "Este computador ainda não está pareado: remote.py pair --relay <endereço>, ou remote.py telegram.",
+  "remote_away": "Fora: as perguntas de permissão vão para o telefone.",
+  "remote_back": "Na mesa: as perguntas ficam nesta tela, sem cartões nem avisos.",
+  "remote_off": "O pareamento foi apagado deste computador.",
+  "remote_status": "Caminhos: {paths}. {state}",
+  "remote_test_answer": "Resposta do telefone: {answer}"
 }

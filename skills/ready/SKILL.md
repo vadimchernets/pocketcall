@@ -1,6 +1,6 @@
 ---
 name: ready
-description: Check whether this machine can be left working while its owner walks away, say in plain words what is not ready, and at work pick the branch that fits the company - the built-in remote, a cloud session that runs while the laptop sleeps, or SSH and tmux for companies on Bedrock, Google Cloud, a gateway, ZDR or HIPAA. Use when the person asks to work from their phone, to leave the computer running, to check the remote, says they are about to go out, or asks how to do it on a work account.
+description: Check whether this machine can be left working while its owner walks away, say in plain words what is not ready, and at work pick the branch that fits the company - the built-in remote, a cloud session that runs while the laptop sleeps, or SSH and tmux for companies on Bedrock, Google Cloud, a gateway, ZDR or HIPAA, or the company's own relay that brings each permission question to the phone as an approval card. Use when the person asks to work from their phone, to leave the computer running, to check the remote, says they are about to go out, or asks how to do it on a work account.
 allowed-tools: Bash(sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/check.py *) PowerShell(${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1 pocketcall say scripts/check.py *)
 ---
 
@@ -41,17 +41,17 @@ inside this skill: that is the next step and the person does it knowingly.
 3. If the version or one of the quiet killers came back NOT, do not go on to `/remote-control`:
    it will not come up, and it will not say why. Fix what can be fixed. If the line is one
    the person cannot change - a company API key, Bedrock, Google Cloud, Foundry, a required
-   gateway, or the administrator's `disableRemoteControl` - go to "At work: three branches"
+   gateway, or the administrator's `disableRemoteControl` - go to "At work: four branches"
    below and pick the branch that works for them. For their company it is the way the
    evening runs.
 4. When everything is ok, say the one sentence that matters and then stop:
    "The machine is ready. Turning the remote on is `/remote-control`, and it will show a
    code for your phone to scan."
 
-## At work: three branches
+## At work: four branches
 
 On a personal Pro or Max plan the check above is the whole story. On a work account the same
-evening goes one of three ways, and the check's lines tell you which. Say the branch letter and
+evening goes one of four ways, and the check's lines tell you which. Say the branch letter and
 its name, then walk the person through it one step at a time.
 
 ### A - the computer stays on: the built-in remote
@@ -117,6 +117,16 @@ through the company's own provider - nothing new leaves.
    `tmux attach -t work`. The same session, with everything in it.
 
 The door ritual is the same as for everyone: a sleeping computer stops branch C too.
+
+### D - the phone remote without a terminal: the company's relay and the approval card
+
+Claude Code stays on this computer, on whatever the company runs - an API key, Bedrock, Google
+Cloud, Foundry, a gateway, ZDR or HIPAA - and only the decisions travel. The company starts its own
+relay with one command (`python3 scripts/relay.py --port 8787`), this computer pairs with it by a
+link or QR code, and every permission question asked while the person is away arrives on the phone,
+end-to-end encrypted and with a push, as an approval card: the full command, every file, and Yes /
+No / Show the diff. The same card can go to the company's Telegram. Open the `remote` skill and
+walk the person through its setup. Branch C stays for the person who wants the whole terminal.
 
 ### Channels: Telegram, Discord or iMessage into the running session
 

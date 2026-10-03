@@ -2,9 +2,11 @@
 """The approval card: what a person sees on the phone before saying yes.
 
 A card holds the full command word for word, every file the action touches, and the diff behind a
-third button. Three buttons: Yes, No, Show the diff. A card that had to be cut to fit a screen or a
-message is marked incomplete, and an incomplete card offers no Yes: what cannot be read in full
-is answered at the desk.
+third button. Three buttons: Yes, No, Show the diff. A card whose diff or list of files had to be
+cut is marked incomplete, and an incomplete card offers no Yes: what cannot be read in full is
+answered at the desk. A card longer than one message travels whole, as a file under the same
+buttons. The same card carries a pull request made for a task (scripts/task.py): the steps Yes
+runs word for word, every file of the pull request, its diff and the task's words.
 """
 
 from __future__ import annotations
@@ -106,14 +108,16 @@ def build(hook: dict, ask_id: str) -> dict:
 
 
 def text_of(card: dict, words: dict) -> str:
-    """The card as plain text for a messenger, in the person's language."""
-    lines = [words["approve_title"], "", words["approve_command"], card["command"], ""]
+    """The card as plain text for a messenger, in the person's language. A pull request's card
+    (scripts/task.py) also carries its own heading, its link and the task's words."""
+    lines = [card.get("heading") or words["approve_title"], ""]
+    if card.get("url"):
+        lines += [card["url"], ""]
+    if card.get("task"):
+        lines += [words["approve_task"], card["task"], ""]
+    lines += [words["approve_command"], card["command"], ""]
     lines.append(words["approve_files"])
     lines += [f"- {f}" for f in card["files"]] or [words["approve_no_files"]]
     if card.get("folder"):
         lines += ["", words["approve_folder"].format(path=card["folder"])]
     return "\n".join(lines)
-
-
-def chunks(text: str, size: int) -> list[str]:
-    return [text[i:i + size] for i in range(0, len(text), size)] or [""]

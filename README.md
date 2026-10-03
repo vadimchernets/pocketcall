@@ -11,7 +11,7 @@ discipline of answering someone who is reading four lines on a phone in a corrid
 
 Pocketcall is an independent open-source project. Not affiliated with Anthropic.
 
-**Status: v0.3.2.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
+**Status: v0.3.3.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
 teacher, a realtor, a bookkeeper — with a paid personal subscription, no API keys, no server, and
 no intention of acquiring either; and, since 0.3, for the same people on a work account, where
 the company decides what is allowed (see [At work](#at-work-four-branches)). It speaks English,
@@ -65,6 +65,7 @@ it and deletes their saved data.
 | `ready` | before leaving: checks the seven silent things and says, in plain words, which are not ready |
 | `leave` | the first time, and any time it matters: six steps ending with one real message answered from the phone, then the thirty seconds at the door you repeat every evening |
 | `remote` | branch D: pair with the company's relay and messenger; while you are away every permission question arrives on the phone as an approval card with Yes, No and Show the diff |
+| `task` | a voice note becomes a task in the company's tracker, a cloud or home session opens its pull request, and the phone gets that pull request's card: every file, the diff, Yes / No / Show the diff |
 | `handover` | standing guidance for the whole time you are away: short answers, finished work in a file |
 
 You can also run the check by hand, without the plugin:
@@ -78,7 +79,7 @@ python3 scripts/check.py --trusted-devices    # your organization requires Trust
 python3 scripts/card.py --lang es             # the card to print and keep where you can see it
 ```
 
-`check.py` and `card.py` are standard library only, read-only, and talk to nothing over the network; the branch D scripts are standard library only too and talk only to the company's relay and messenger.
+`check.py` and `card.py` are standard library only, read-only, and talk to nothing over the network. The branch D scripts and `task.py` are standard library only too: the first talk only to the company's relay and messenger, and `task.py` to the company's tracker (through the GitHub CLI's own sign-in, or the company's webhook), to git, to Claude Code, to the relay (tasks sealed like the cards) and, for a cloud task, to the routine's own API trigger.
 
 ## The seven things `ready` looks at
 
@@ -124,7 +125,9 @@ managed-settings).
 - **B — the laptop sleeps or goes in the bag: a cloud session.** `claude --cloud "the task"`
   runs it on Anthropic's cloud, followed from the Code tab of the Claude app; back at the desk,
   `claude --teleport <session-id>`. Without GitHub, `CCR_FORCE_BUNDLE=1` uploads the local
-  repository instead. An Owner turns cloud sessions on at the same admin page.
+  repository instead. An Owner turns cloud sessions on at the same admin page. A voice note can go
+  straight to this branch as a task, and come back to the phone as a pull request to approve (see
+  [Voice → task → pull request](#voice--task--pull-request--yes-from-the-phone)).
 - **C — the company is on Bedrock, Google Cloud, Foundry, a gateway, ZDR or HIPAA.** Neither the
   remote nor cloud sessions are offered there, so the phone becomes a terminal into the person's
   own computer: Tailscale on both, SSH on the computer, `claude` inside `tmux`, and Blink Shell
@@ -147,8 +150,9 @@ Two habits go with every branch. **Do not approve on the phone what you cannot s
 permission question that does not say which file, what changes and whether it can be undone
 gets a no, or "wait until I am at the desk" — it is on the card in every language. And **a voice
 note from the street goes into a queue, not into action**: something to chase goes to Chasecall,
-a long job for tonight goes to Nightcall through the handover folder, and with neither installed
-it still lands in that folder word for word.
+a long job for tonight goes to Nightcall through the handover folder, a change to code goes to the
+company's tracker as a task and reaches the code only with a Yes on its pull request's card, and
+with none of those set up it still lands in that folder word for word.
 
 ## Branch D: the phone remote without a terminal
 
@@ -171,7 +175,8 @@ python3 scripts/remote.py back        # at the desk: no cards, no push
   derived from the key and ciphertext, nothing else.
 - **Push.** `--push` points at an ntfy server (the company's own, or ntfy.sh): the ntfy app on the
   phone rings with one line, "A decision is waiting". No command, file or name is in it. At the desk
-  (`remote.py back`) nothing is sent at all.
+  (`remote.py back`) no permission question is sent at all; a pull request's card for a task comes
+  whenever the pull request is ready, wherever the person is.
 - **The approval card** is built by `scripts/approval_card.py` from the question Claude Code is about
   to ask (the plugin's `PermissionRequest` hook, `scripts/approve_hook.py`). A card that had to be
   cut to fit the phone or the message comes without Yes. The first answer from any path decides; no
@@ -179,6 +184,85 @@ python3 scripts/remote.py back        # at the desk: no cards, no push
 - **The company's messenger.** With Channels already on (`channelsEnabled`, `allowedChannelPlugins`,
   which `ready` reads), a channel carries the conversation and branch D carries the decisions; with
   a bot of the company's own, `remote.py telegram` puts the card in the chat the team already reads.
+
+## Voice → task → pull request → Yes from the phone
+
+New in 0.3.3. A sentence spoken in the street becomes a ticket in the company's tracker, word for
+word; a session makes the change on a branch of its own and opens a pull request; and the phone gets
+branch D's approval card for that pull request. Every step lands in the task's journal — who asked,
+which session took it, what changed, who said Yes — so a manager reads it in the tracker the team
+already uses, on the seats the company already pays for.
+
+```
+python3 scripts/task.py setup --github acme/site                    # once: tasks become GitHub issues (gh auth login once)
+python3 scripts/task.py setup --webhook https://tracker.example.com/in --repo acme/site --secret <key>   # or another tracker
+python3 scripts/task.py setup --routine <the routine's API trigger URL> --routine-token <its token>   # cloud tasks, no terminal
+python3 scripts/task.py file "the words, unchanged"                 # a voice note becomes a task
+python3 scripts/task.py start 12 --cloud                            # a cloud session takes it: the laptop may sleep
+python3 scripts/task.py start 12 --home                             # or a session here, in a git worktree of its own
+python3 scripts/task.py card 7                                      # that pull request's card on the phone
+python3 scripts/remote.py join --link "<the phone link>"            # on a machine that stays on: the same phone
+python3 scripts/task.py watch --start cloud                         # the desk: all of the above by itself
+```
+
+- **The voice note.** In a session, the person says it and the `task` skill files their words
+  unchanged. On the phone page of branch D, the **New task** box takes the keyboard's microphone; the
+  note is sealed with the pairing key like the cards, so the relay forwards a note it cannot read,
+  and the task's link comes back to the same box, followed by every step after it — the session that
+  took the task, its pull request, the merge, or a session that did not start and is tried again —
+  each one ringing the phone. A note already queued in the handover folder or the Chasecall inbox is
+  filed with `--from <file>`.
+- **The tracker.** GitHub Issues through `gh issue create` under the GitHub CLI's own sign-in, labelled
+  `pocketcall`. Any other tracker through a webhook: a JSON POST with the title, the words, who and
+  when, signed HMAC-SHA256 in `X-Pocketcall-Signature-256` when a secret is set, with whatever header
+  the tracker asks for (`--header "Name: value"`); later steps arrive at the same address as events.
+- **The session.** `--cloud` hands the task to a cloud session (branch B) with the words unchanged
+  and three rules: a branch of its own from the default branch, only what the words ask, a pull
+  request whose description starts with `Closes #12`. It goes one of two ways:
+  - **A routine** — the way for a desk, on any system, with no terminal and no Claude Code on that
+    machine. Made once at claude.ai/code/routines on the repository, with this saved prompt:
+    *Carry out the task in the routine-fire-payload block: Pocketcall filed it in this repository's
+    tracker for me. Follow its numbered rules for the branch and the pull request.* Its API trigger's
+    URL and token go to `task.py setup --routine <url> --routine-token <token>` (kept in `task.json`,
+    readable by this user only; the token starts that routine and reads nothing). Each task is one
+    POST to the trigger; the routine clones the default branch and runs on the person's own plan.
+  - **`claude --cloud`**, where Claude Code is signed in. Claude Code creates a cloud session only in
+    a terminal, so Pocketcall gives it one of its own (a pseudo-terminal), runs it from the desk's own
+    copy of the repository on the default branch — never from whatever branch a checkout is on — and
+    lets it go once the session's link is printed.
+
+  The task counts as started only with a session link in hand. Without one it stays filed, the desk
+  tries again ten and twenty minutes later, and the phone hears each line. `--home` makes a git
+  worktree on `pocketcall/12-…` from the checkout given at setup, or from the desk's own copy
+  (`~/.pocketcall/repos/<owner>-<name>`, cloned with `gh repo clone`), runs `claude -p` there with
+  file edits accepted, then commits, pushes and opens the pull request itself, so it works on any
+  provider the company runs. Either way nothing reaches the default branch without a Yes.
+- **The card.** Branch D's card, for a pull request: the steps Yes runs, word for word
+  (`gh pr review 7 --repo acme/site --approve --body '…' && gh pr merge 7 --repo acme/site --squash --match-head-commit <sha>`),
+  every file, the diff behind **Show the diff**, the task's words, **Yes** and **No**; the heading
+  names the pull request's author, and says so when it comes from a fork. Yes merges exactly the
+  commit the card showed. Where the repository's checks are still running, the Yes is kept and that
+  same commit merges, `--match-head-commit` and all, the moment they pass — `task.py card` waits for
+  them, and the desk carries every kept Yes. Auto-merge is never turned on, so a commit pushed after
+  the card never rides on this Yes: it brings its own card, and failed checks come back to the phone
+  as a line. The Yes is also kept in GitHub as an approving review. No leaves a comment and the pull
+  request open. A card cut to fit comes without Yes; in Telegram a card longer than one message
+  arrives whole, as one file under the same buttons, and so does a long diff.
+- **Whose pull request.** The desk links a pull request to a task by itself when it closes the task's
+  issue and comes from the task's own branch (`pocketcall/12-…`, or any branch with `pocketcall-12`
+  in its name) or from the desk's own GitHub account. A pull request from a fork, or someone else's
+  on another branch, reaches the phone only through `task.py card <n>`, its heading naming the author
+  and the fork.
+- **While the laptop sleeps.** The desk (`task.py watch`) runs on whatever stays on — the machine
+  that already runs the relay, joined to the same phone with `remote.py join`. A task filed on the
+  laptop reaches it through the relay, sealed like the cards, and a pull request for an issue
+  Pocketcall filed anywhere is found through the issue it closes. Several desks on one phone take
+  turns: the relay lets one act at a time and hands each note to one desk; when the laptop's desk
+  stops, the other takes over within a minute and a half, with the laptop's tasks and the cards
+  already on the phone. With `--start cloud` the work runs in Anthropic's cloud; with `--start home`
+  on that machine, on the company's own provider (an API key, Bedrock, Google Cloud, Foundry).
+  Neither needs the laptop. A cloud session that pushed its branch without opening a pull request
+  gets one from the desk.
 
 ## What is true about an evening away
 
@@ -198,7 +282,8 @@ python3 scripts/remote.py back        # at the desk: no cards, no push
 - **Your sign-in stays yours.** Never sign in to your assistant account inside another
   company's app or site that offers you a remote: a sign-in is for its owner alone (Anthropic's
   Consumer Terms of Service, anthropic.com/legal/consumer-terms, on account credentials). Pocketcall
-  asks for no account, no token and no sign-in, and branch D runs on the company's own relay.
+  never asks for your Claude sign-in: branch D runs on the company's own relay, and tasks reach the
+  tracker through the GitHub CLI's own sign-in or the company's webhook.
 
 ## What leaves your house, and what does not
 
@@ -216,7 +301,10 @@ English; `python3 scripts/check_language.py` keeps Cyrillic inside `lang/`.
 ## Tests
 
 `tests/test_remote.py` runs a relay on a local port, a stand-in Telegram, and the phone's sealing
-code in Node, and proves a card goes through sealed and comes back as Yes or No.
+code in Node, and proves a card goes through sealed and comes back as Yes or No. `tests/test_task.py`
+runs the whole way from a voice note to a merge with a stand-in GitHub CLI and a stand-in Claude Code
+that, like the real one, creates a cloud session only in a terminal, a routine's API trigger, a webhook
+server, a bare repository as the far side of git, the relay, and two computers on one phone.
 
 ```
 python3 -m pytest -q -p no:cacheprovider tests
@@ -227,7 +315,8 @@ The tests run the checks against temporary directories, recorded settings files 
 folder for the organization's managed settings. They run with no subscription, no network and
 no phone. `tests/mutate_code.py` (run by the tests too) breaks each promise in a copy — the API-key
 sentence in English and Russian, the rule about approving from the phone, the Trusted Devices
-logic, the administrator's switch — and expects red, with one control that stays green.
+logic, the administrator's switch, the merge pinned to the commit the card showed, the words filed
+unchanged — and expects red, with one control that stays green.
 
 ## Licence
 

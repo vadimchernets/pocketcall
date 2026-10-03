@@ -4,6 +4,8 @@ Everything runs on this computer: a relay on a free local port, a stand-in Teleg
 phone's own sealing code run by Node when Node is here.
 """
 
+import email
+import email.policy
 import io
 import json
 import os
@@ -44,6 +46,20 @@ def post(url, data):
             return r.status
     except urllib.error.HTTPError as e:
         return e.code
+
+
+def box_of(room_url, ask_id):
+    """What the phone page does for each new id in the asks list: fetches that one card's box."""
+    status, data = get(f"{room_url}/ask?id={ask_id}")
+    return data["box"] if status == 200 else None
+
+
+def form(headers, raw):
+    """A multipart/form-data body -> {name: text}, the way Telegram reads a document upload."""
+    msg = email.message_from_bytes(b"Content-Type: " + headers["Content-Type"].encode() + b"\r\n\r\n" + raw,
+                                   policy=email.policy.HTTP)
+    return {part.get_param("name", header="content-disposition"): part.get_payload(decode=True).decode("utf-8")
+            for part in msg.iter_parts()}
 
 
 class RelayCase(unittest.TestCase):
@@ -104,8 +120,10 @@ class TestRelay(RelayCase):
         card = approval_card.build({"tool_name": "Bash", "tool_input": {"command": "make deploy"}}, "c1")
         self.assertEqual(post(f"{self.url}/r/{pair.room}/ask", {"id": "c1", "box": pair.seal(card)}), 204)
         _, data = get(f"{self.url}/r/{pair.room}/asks")
-        self.assertNotIn("make deploy", json.dumps(data))      # the relay holds only ciphertext
-        self.assertEqual(pair.open(data["asks"][0]["box"])["command"], "make deploy")
+        self.assertEqual(data["asks"], [{"id": "c1"}])        # ids only: the phone fetches each box once
+        box = box_of(f"{self.url}/r/{pair.room}", "c1")
+        self.assertNotIn("make deploy", box)                   # the relay holds only ciphertext
+        self.assertEqual(pair.open(box)["command"], "make deploy")
         self.assertEqual(post(f"{self.url}/r/{pair.room}/answer", {"id": "c1", "box": pair.seal({"id": "c1", "say": "yes"})}), 204)
         _, left = get(f"{self.url}/r/{pair.room}/asks")
         self.assertEqual(left["asks"], [])
@@ -135,6 +153,56 @@ class TestRelay(RelayCase):
             ntfy.server_close()
         self.assertEqual(seen, ["A decision is waiting"])
 
+    def test_a_task_s_news_rings_the_phone_with_one_line_and_no_text_of_its_own(self):
+        seen = []
+
+        class Ntfy(BaseHTTPRequestHandler):
+            def do_POST(self):
+                seen.append(self.rfile.read(int(self.headers["Content-Length"])).decode())
+                self.send_response(200)
+                self.end_headers()
+
+            def log_message(self, *a):
+                pass
+
+        ntfy = ThreadingHTTPServer(("127.0.0.1", 0), Ntfy)
+        threading.Thread(target=ntfy.serve_forever, daemon=True).start()
+        rung = relay.serve("127.0.0.1", 0, f"http://127.0.0.1:{ntfy.server_address[1]}/topic")
+        threading.Thread(target=rung.serve_forever, daemon=True).start()
+        room = f"http://127.0.0.1:{rung.server_address[1]}/r/{seal.Pair(seal.new_secret()).room}"
+        try:
+            self.assertEqual(post(room + "/receipt", {"id": "n1-1", "box": "sealed", "ring": True}), 204)
+            self.assertEqual(post(room + "/receipt", {"id": "c9", "box": "sealed"}), 204)
+            for _ in range(100):
+                if seen:
+                    break
+                threading.Event().wait(0.02)
+        finally:
+            rung.shutdown()
+            rung.server_close()
+            ntfy.shutdown()
+            ntfy.server_close()
+        self.assertEqual(seen, ["News on a task"])
+
+    def test_a_note_goes_to_one_desk_at_a_time_and_once_it_is_filed_never_again(self):
+        room = f"{self.url}/r/{seal.Pair(seal.new_secret()).room}"
+        self.assertEqual(post(room + "/note", {"id": "n1", "box": "sealed"}), 204)
+        self.assertEqual([n["id"] for n in get(room + "/notes")[1]["notes"]], ["n1"])     # a look takes nothing
+        self.assertEqual([n["id"] for n in get(room + "/notes?lease=60")[1]["notes"]], ["n1"])
+        self.assertEqual(get(room + "/notes?lease=60")[1]["notes"], [])                 # the other desk: out of sight
+        with mock.patch.object(relay.time, "monotonic", return_value=relay.time.monotonic() + 61):
+            self.assertEqual([n["id"] for n in get(room + "/notes?lease=60")[1]["notes"]], ["n1"])   # its desk stopped
+        self.assertEqual(post(room + "/receipt", {"id": "n1", "box": "filed"}), 204)
+        self.assertEqual(post(room + "/note", {"id": "n1", "box": "sealed"}), 204)       # the page sends it again
+        self.assertEqual(get(room + "/notes")[1]["notes"], [])
+
+    def test_one_desk_holds_the_phone_and_the_next_one_takes_it_when_it_lets_go(self):
+        room = f"{self.url}/r/{seal.Pair(seal.new_secret()).room}"
+        self.assertEqual(post(room + "/desk", {"id": "laptop", "box": "", "for": 90}), 204)
+        self.assertEqual(post(room + "/desk", {"id": "server", "box": "", "for": 90}), 409)
+        self.assertEqual(post(room + "/desk", {"id": "laptop", "box": "", "for": 0}), 204)
+        self.assertEqual(post(room + "/desk", {"id": "server", "box": "", "for": 90}), 204)
+
 
 class TestCard(unittest.TestCase):
     def test_the_card_has_the_full_command_and_every_file(self):
@@ -163,18 +231,26 @@ class TestCard(unittest.TestCase):
 
 
 class FakeTelegram(BaseHTTPRequestHandler):
+    """Telegram's Bot API as far as the card goes: JSON calls and multipart document uploads; past
+    twenty messages to one chat it answers 429, as Telegram does to a bot that floods a chat."""
     calls = []
     updates = []
 
     def do_POST(self):
         method = self.path.rsplit("/", 1)[-1]
-        body = json.loads(self.rfile.read(int(self.headers["Content-Length"])) or b"{}")
+        raw = self.rfile.read(int(self.headers["Content-Length"]))
+        if self.headers["Content-Type"].startswith("multipart/form-data"):
+            body = form(self.headers, raw)
+            body["reply_markup"] = json.loads(body["reply_markup"]) if "reply_markup" in body else None
+        else:
+            body = json.loads(raw or b"{}")
         FakeTelegram.calls.append((method, body))
         result = FakeTelegram.updates[:] if method == "getUpdates" else True
         if method == "getUpdates":
             FakeTelegram.updates.clear()
-        data = json.dumps({"ok": True, "result": result}).encode()
-        self.send_response(200)
+        status = 429 if method == "sendMessage" and sum(m == "sendMessage" for m, _ in FakeTelegram.calls) > 20 else 200
+        data = json.dumps({"ok": status == 200, "result": result}).encode()
+        self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
@@ -220,12 +296,39 @@ class TestTelegram(unittest.TestCase):
 
     def test_a_card_cut_to_fit_offers_no_yes(self):
         tg = remote.Telegram("T", 7, [7], WORDS)
-        tg.send({"id": "k2", "tool": "Bash", "command": "z" * 9000, "files": [], "diff": "", "folder": "",
-                 "complete": True})
+        tg.send({"id": "k2", "tool": "Bash", "command": "make", "files": [], "diff": "", "folder": "",
+                 "complete": False})
         labels = [b["text"] for b in FakeTelegram.calls[0][1]["reply_markup"]["inline_keyboard"][0]]
         self.assertEqual(labels, ["No", "Show the diff"])
         self.press(7, "y:k2", 1)
         self.assertIsNone(tg.poll("k2", 0))
+
+    def test_a_card_longer_than_a_message_arrives_whole_as_one_file_with_yes(self):
+        tg = remote.Telegram("T", 7, [7], WORDS)
+        files = ["src/components/checkout/price-%03d-summary-panel.tsx" % n for n in range(100)]
+        tg.send({"id": "k3", "tool": "Pull request", "heading": "A pull request waits for your Yes: Price 12",
+                 "command": "gh pr merge 7", "files": files, "diff": "+price: 12\n" * 3000, "folder": "",
+                 "task": "w" * 3600, "complete": True})
+        method, body = FakeTelegram.calls[0]
+        self.assertEqual(method, "sendDocument")
+        self.assertLessEqual(len(body["caption"]), 1024)
+        for whole in (files[0], files[-1], "w" * 3600, "gh pr merge 7", "+price: 12\n" * 3000):
+            self.assertIn(whole, body["document"])               # nothing left out
+        labels = [b["text"] for b in body["reply_markup"]["inline_keyboard"][0]]
+        self.assertEqual(labels, ["Yes", "No", "Show the diff"])
+        self.press(7, "y:k3", 1)
+        self.assertEqual(tg.poll("k3", 0), "yes")
+
+    def test_a_long_diff_comes_as_one_file_where_a_stream_of_messages_would_be_cut_off(self):
+        tg = remote.Telegram("T", 7, [7], WORDS)
+        for n in range(20):                          # the chat is already busy: the next message is a 429
+            tg.call("sendMessage", chat_id=7, text="earlier %d" % n)
+        diff = "".join("+line %06d of the change\n" % n for n in range(9000))
+        tg.remember({"id": "k4", "diff": diff, "complete": True}, True)
+        tg.press("k4", "d")
+        method, body = FakeTelegram.calls[-1]
+        self.assertEqual(method, "sendDocument")
+        self.assertEqual(body["document"], diff)
 
 
 class TestHook(RelayCase):
@@ -235,7 +338,7 @@ class TestHook(RelayCase):
                 _, data = get(f"{self.url}/r/{pair.room}/asks")
                 if data["asks"]:
                     a = data["asks"][0]
-                    card = pair.open(a["box"])
+                    card = pair.open(box_of(f"{self.url}/r/{pair.room}", a["id"]))
                     post(f"{self.url}/r/{pair.room}/answer", {"id": a["id"], "box": pair.seal({"id": card["id"], "say": say})})
                     return
                 threading.Event().wait(0.05)

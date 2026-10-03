@@ -112,6 +112,10 @@ thought goes, so it does not get lost and does not get acted on half-heard:
 - **A long job for tonight** goes to Nightcall: write their words unchanged into the handover
   folder as `for-tonight-<date>.md`, and at home `/nightcall:start` takes that text as the
   task, with its five minutes together before the night begins.
+- **A change to code, or to a document kept in a repository,** goes to the company's tracker as a
+  task, word for word: open the `task` skill. A cloud session can do it while the laptop sleeps,
+  and it reaches the code only when the person says Yes on its pull request's card. On a work phone
+  paired with branch D, the **New task** box on the phone page does the same without this session.
 - **Neither plugin installed?** The note still goes into the handover folder as a file, word
   for word. Nothing spoken in the street is lost, and nothing is done on a guess.
 

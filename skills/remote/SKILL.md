@@ -64,6 +64,16 @@ person that in one plain line and go on by hand — never show them a Python err
 - With Channels on (`channelsEnabled`, `allowedChannelPlugins`, which `ready` reads), a channel
   carries whole conversations; branch D carries the decisions with the card. Both can run together.
 
+## Pull requests from voice notes
+
+The same card carries a pull request. The `task` skill turns a voice note - from this session, or
+from the **New task** box on the phone page - into a task in the company's tracker; a cloud or home
+session opens a pull request for it; and the card shows the steps Yes runs word for word (an approving
+review and the merge pinned to the commit shown), every file, the diff and the task's words. A machine that stays on - the one that runs the relay - joins the
+same phone with `… scripts/remote.py join --link "<the phone link>"` and runs the desk there, so
+notes and cards keep moving while the laptop sleeps. A Telegram bot has one reader at a time: that
+machine gets a bot of its own, or carries the cards on the phone page alone.
+
 ## Read the card before Yes
 
 The rule from `leave` holds here: **do not approve on the phone what you cannot see**. The card shows

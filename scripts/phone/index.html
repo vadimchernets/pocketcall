@@ -12,11 +12,21 @@
   button { flex: 1; font-size: 18px; padding: 12px; border: 0; border-radius: 10px; }
   .yes { background: #1f7a3a; color: #fff; } .no { background: #a32020; color: #fff; } .diff { background: #ddd; }
   .quiet { color: #666; }
+  textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 8px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; }
+  a { word-break: break-all; }
 </style>
 </head>
 <body>
 <h1>Pocketcall</h1>
 <p id="state" class="quiet">Connecting…</p>
+<div id="task" class="card" hidden>
+  <strong>New task</strong>
+  <p class="quiet">Say it with the keyboard's microphone, or type it. It goes to the company's tracker word for word,
+    a session makes the change, and its pull request comes back here as a card.</p>
+  <textarea id="words" rows="4"></textarea>
+  <div class="row"><button id="send" class="yes">Send as a task</button></div>
+  <div id="sent"></div>
+</div>
 <div id="cards"></div>
 <script src="seal.js"></script>
 <script>
@@ -29,29 +39,91 @@
   if (!secret) { state.textContent = "Open the link this computer printed with remote.py pair."; return; }
   const pair = await PocketSeal.pair(secret);
   const shown = new Set();
+  const waiting = new Map();   // a note's or a card's id -> where what came of it is shown
+  const notes = new Map();     // a note's id -> its sealed box, sent again until the desk's receipt comes
+  const AGAIN = 60000;         // a relay that restarted has lost it; the desk files a note only once
 
   function el(tag, text, cls) { const e = document.createElement(tag); if (text) e.textContent = text; if (cls) e.className = cls; return e; }
+  function link(url) {
+    const a = el("a", url);
+    if (/^https?:\/\//.test(url)) { a.href = url; a.target = "_blank"; a.rel = "noopener"; }
+    return a;
+  }
+  function hex() { return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join(""); }
+  function post(what, body) {
+    return fetch(`r/${pair.room}/${what}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  }
 
-  async function answer(id, say, node) {
-    const r = await fetch(`r/${pair.room}/answer`, { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, box: await pair.seal({ id, say }) }) });
+  async function answer(card, say, node) {
+    const r = await post("answer", { id: card.id, box: await pair.seal({ id: card.id, say }) });
     node.replaceChildren(el("p", r.ok ? (say === "yes" ? "Allowed." : "Declined.") : "This question was already answered."));
+    if (r.ok && card.receipt) { const back = el("p", "Waiting for the result…", "quiet"); node.append(back); waiting.set(card.id, back); }
   }
 
   function render(card) {
     const node = el("div", "", "card");
-    node.append(el("strong", card.tool), el("p", "Command, word for word:"), el("pre", card.command));
+    node.append(el("strong", card.heading || card.tool));
+    if (card.url) { const p = el("p"); p.append(link(card.url)); node.append(p); }
+    if (card.task) node.append(el("p", "The task, word for word:"), el("pre", card.task));
+    node.append(el("p", "Command, word for word:"), el("pre", card.command));
     node.append(el("p", card.files.length ? "Files:" : "No files named."));
     if (card.files.length) { const ul = el("ul"); card.files.forEach((f) => ul.append(el("li", f))); node.append(ul); }
     if (card.folder) node.append(el("p", "Folder: " + card.folder, "quiet"));
     const diff = el("pre", card.diff || "No changes to show."); diff.hidden = true;
     const row = el("div", "", "row");
-    if (card.complete) { const y = el("button", "Yes", "yes"); y.onclick = () => answer(card.id, "yes", node); row.append(y); }
+    if (card.complete) { const y = el("button", "Yes", "yes"); y.onclick = () => answer(card, "yes", node); row.append(y); }
     else node.append(el("p", "Too large to read in full here: answer at the desk, or No."));
-    const n = el("button", "No", "no"); n.onclick = () => answer(card.id, "no", node);
+    const n = el("button", "No", "no"); n.onclick = () => answer(card, "no", node);
     const d = el("button", "Show the diff", "diff"); d.onclick = () => { diff.hidden = !diff.hidden; };
     row.append(n, d); node.append(row, diff);
     box.prepend(node);
+  }
+
+  const words = document.getElementById("words");
+  const sent = document.getElementById("sent");
+  document.getElementById("task").hidden = false;
+  document.getElementById("send").onclick = async () => {
+    const text = words.value.trim();
+    if (!text) return;
+    const id = hex();
+    const line = el("p", "Sending…", "quiet");
+    sent.prepend(line);
+    try {
+      const sealed = await pair.seal({ id, kind: "note", words: text, at: new Date().toISOString() });
+      const r = await post("note", { id, box: sealed });
+      if (!r.ok) throw new Error(String(r.status));
+      words.value = "";
+      line.textContent = "Sent. The task's link comes back here once it is filed.";
+      waiting.set(id, line);
+      notes.set(id, { box: sealed, at: Date.now() });
+    } catch (e) { line.textContent = "The relay did not take it; your words are still in the box. Send again."; }
+  };
+
+  async function receipts() {
+    for (const [id, node] of waiting) {
+      const r = await fetch(`r/${pair.room}/receipt?id=${id}`, { cache: "no-store" });
+      if (r.status !== 200) continue;
+      try {
+        const got = await pair.open((await r.json()).box);
+        if (got.id !== id) continue;
+        waiting.delete(id);
+        notes.delete(id);
+        node.replaceChildren(el("span", got.text || ""));
+        if (got.url) node.append(" ", link(got.url));
+        if (got.more) {            // the task's next step comes under the next number: started, its pull request, the merge
+          const step = id.match(/^(.*)-(\d+)$/);
+          const next = step ? `${step[1]}-${Number(step[2]) + 1}` : `${id}-1`;
+          const line = el("p", "", "quiet");
+          node.after(line);
+          waiting.set(next, line);
+        }
+      } catch (e) { /* not ours */ }
+    }
+    for (const [id, note] of notes) {
+      if (Date.now() - note.at < AGAIN) continue;
+      note.at = Date.now();
+      post("note", { id, box: note.box }).catch(() => {});
+    }
   }
 
   async function tick() {
@@ -59,11 +131,15 @@
       const r = await fetch(`r/${pair.room}/asks`, { cache: "no-store" });
       const data = await r.json();
       state.textContent = data.asks.length ? "A decision is waiting." : "Paired. Nothing waits for you.";
-      for (const a of data.asks) {
+      for (const a of data.asks) {   // ids only: each card's box is fetched once, however long its diff
         if (shown.has(a.id)) continue;
+        const one = await fetch(`r/${pair.room}/ask?id=${encodeURIComponent(a.id)}`, { cache: "no-store" });
+        if (one.status === 204) { shown.add(a.id); continue; }
+        if (!one.ok) continue;
         shown.add(a.id);
-        try { const card = await pair.open(a.box); if (card.id === a.id) render(card); } catch (e) { /* not ours */ }
+        try { const card = await pair.open((await one.json()).box); if (card.id === a.id) render(card); } catch (e) { /* not ours */ }
       }
+      await receipts();
     } catch (e) { state.textContent = "The relay is out of reach. Trying again…"; }
   }
   tick(); setInterval(tick, 3000);

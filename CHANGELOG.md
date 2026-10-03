@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.3.3 — 2026-10-03
+
+- **Voice → task → pull request → Yes from the phone.** New `scripts/task.py` and skill `task`. A voice note
+  becomes a task in the company's tracker, word for word: GitHub Issues through `gh issue create` (labelled
+  `pocketcall`; the label is made once when the repository lacks it), or any other tracker through a webhook - a
+  JSON POST with the title, the words, who and when, signed HMAC-SHA256 in `X-Pocketcall-Signature-256` when a
+  secret is set, with the headers the tracker asks for. The note comes from a session (`task.py file`, the words on
+  standard input), from a queued file (`--from`), or from the phone page of branch D, whose new **New task** box
+  seals it with the pairing key: the relay forwards a note it cannot read, and the task's link comes back sealed.
+- **A session picks the task up.** `task.py start <task> --cloud` hands it to a cloud session with the words
+  unchanged and the rules of its pull request (a branch of its own from the default branch, `Closes #<n>` first);
+  the laptop may sleep from there. The way in for a desk is a routine's API trigger
+  (`task.py setup --routine <url> --routine-token <token>`): one POST per task, no terminal and no Claude Code on
+  that machine, the default branch cloned, the person's own plan. Without a routine, `claude --cloud` runs in a
+  pseudo-terminal of its own - Claude Code creates a cloud session only in a terminal - from the desk's own copy
+  of the repository on the default branch. A task counts as started only with the session's link in hand;
+  otherwise it stays filed and the desk tries again. `--home` makes a git worktree on `pocketcall/<n>-…` from the
+  checkout given at setup or from the desk's own copy (`~/.pocketcall/repos`, `gh repo clone`), runs `claude -p` in
+  it, then commits, pushes and opens the pull request itself - on any provider the company runs. Each step goes
+  into the task's journal (a comment on the issue, or an event to the webhook) and back to the phone.
+- **The pull request's approval card**, branch D's card reused: the steps Yes runs, word for word
+  (`gh pr review <n> … --approve && gh pr merge <n> … --squash --match-head-commit <sha>`), every file, the diff
+  behind Show the diff, the task's words, Yes / No, and a heading that names the author and a fork. Yes merges
+  exactly the commit the card showed. Where the repository's checks are still running, the Yes is kept and that same
+  commit merges when they pass (`task.py card` waits for them, the desk carries every kept Yes); auto-merge is never turned on, so a commit pushed after the card brings its
+  own card and never rides on the Yes, and failed checks come back as a line. No leaves a comment and the pull
+  request open. A card cut to fit comes without Yes. A pull request from a fork, or someone else's off the task's
+  branch, is never linked by itself: `task.py card <pull request>` sends one by hand.
+- **The desk: `task.py watch`.** Notes from the phone become tasks, new tasks get a session (`--start cloud` or
+  `--start home`), every pull request for a task gets its card once per commit, the answers are carried out, a
+  branch a cloud session pushed without a pull request gets one, a card lost with a restarted relay is sent again,
+  and each step of a task comes back to the phone under its note, ringing it. On the machine that already runs the
+  relay - joined to the phone with the new `remote.py join --link <the phone link>` - it keeps all of it going while
+  the laptop sleeps: a task filed on the laptop reaches it through the relay, sealed, and a pull request for an
+  issue Pocketcall filed anywhere is found through the issue it closes. Desks on one phone take turns through a
+  lease on the relay, and each note goes to one desk at a time and is filed once.
+- Telegram: several cards can wait at once, and a press for a card another pocketcall process on the same computer
+  waits for is put aside for it, so the hook and the desk never take each other's answers. A card longer than one
+  message arrives whole as one file under the same buttons, Yes included, and so does a long diff.
+- The relay carries notes, receipts and tasks (`/r/<room>/note`, `/notes`, `/receipt`, `/task`, `/tasks`), sealed
+  like the cards, and the desk lease (`/desk`). The list the phone polls carries card ids only; each card's box is
+  fetched once (`/ask?id=`).
+- README and `SECURITY.md` say what each script talks to now that tasks reach the tracker; the push line says
+  that at the desk no permission question is sent, and that a pull request's card comes when it is ready.
+- `tests/test_task.py`: a stand-in GitHub CLI and a stand-in Claude Code that, like the real one, creates a cloud
+  session only in a terminal, a routine's API trigger, a webhook server, a bare repository as the far side of git,
+  a stand-in Telegram that answers 429 to a flood, the relay, and two computers on one phone. Eleven new mutations -
+  the merge pinned to the card's commit, no Yes on a card cut to fit, the words filed unchanged, a held Yes never
+  merging a newer commit, no start without a session link, one desk at a time, no fork linked by itself, a task's
+  news reaching the phone, ids only in the polled list, one note to one desk, Yes on a long Telegram card - each
+  expected red.
+
 ## 0.3.2 — 2026-10-03
 
 - **Branch D: the phone remote without a terminal.** `scripts/relay.py` is the company's own relay, started

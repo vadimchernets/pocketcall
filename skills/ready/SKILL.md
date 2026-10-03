@@ -98,6 +98,9 @@ Enterprise an Owner turns cloud sessions on at claude.ai/admin-settings/claude-c
    list) from a clean checkout of the same repository, signed in to the same account. To keep
    steering from the phone after that, `/remote-control` in the teleported session.
 5. One more message from anywhere, without opening anything: `claude -p "message" --cloud <session-id>`.
+6. A voice note can go straight to this branch: the `task` skill files it in the company's tracker
+   word for word and hands it to a cloud session, whose pull request comes back to the phone as an
+   approval card - with the laptop asleep.
 
 ### C - the company is on Bedrock, Google Cloud, Foundry, a gateway, ZDR or HIPAA
 
@@ -127,6 +130,8 @@ link or QR code, and every permission question asked while the person is away ar
 end-to-end encrypted and with a push, as an approval card: the full command, every file, and Yes /
 No / Show the diff. The same card can go to the company's Telegram. Open the `remote` skill and
 walk the person through its setup. Branch C stays for the person who wants the whole terminal.
+With a machine that stays on, a voice note becomes a task and a pull request here too, done on the
+company's own provider: the `task` skill.
 
 ### Channels: Telegram, Discord or iMessage into the running session
 

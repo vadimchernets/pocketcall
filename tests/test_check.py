@@ -7,12 +7,16 @@ says about them. Nothing here needs a subscription, a network or a phone.
 import datetime as dt
 import json
 import os
+import re
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS))
 
 import check  # noqa: E402
 
@@ -28,6 +32,11 @@ class TempProject(unittest.TestCase):
         self._env = dict(os.environ)
         for name in check.KILLERS + check.REDIRECTS + check.NOT_A_SUBSCRIPTION + check.OTHER_CLOUDS:
             os.environ.pop(name, None)
+        # The organization's real policy folder is never read by a test: an empty one stands in.
+        self.managed = self.project / "managed"
+        self.managed.mkdir()
+        os.environ["POCKETCALL_MANAGED_DIR"] = str(self.managed)
+        check.use_lang("en")
 
     def tearDown(self):
         os.environ.clear()
@@ -317,6 +326,160 @@ class TestCard(unittest.TestCase):
     def test_the_card_says_a_stopped_sync_is_silent_too(self):
         import card
         self.assertIn("stopped syncing", card.build("pocket-out", "23.09.2026"))
+
+
+class TestWorkAccounts(TempProject):
+    """The business side: what a company's key, cloud, gateway or policy does to the remote."""
+
+    def policy(self, data, name="managed-settings.json"):
+        (self.managed / name).write_text(json.dumps(data), encoding="utf-8")
+
+    def test_an_api_key_says_the_remote_will_not_work(self):
+        os.environ["ANTHROPIC_API_KEY"] = "x"
+        item = find(check.check_quiet_killers(self.project), "env:ANTHROPIC_API_KEY")
+        self.assertIn("the remote will not work", item["says"])
+        self.assertIn("branch C", item["do"])
+
+    def test_the_api_key_sentence_is_said_in_russian_too(self):
+        os.environ["ANTHROPIC_API_KEY"] = "x"
+        check.use_lang("ru")
+        item = find(check.check_quiet_killers(self.project), "env:ANTHROPIC_API_KEY")
+        self.assertIn("\u043f\u0443\u043b\u044c\u0442 \u043d\u0435 \u0431\u0443\u0434\u0435\u0442 "
+                      "\u0440\u0430\u0431\u043e\u0442\u0430\u0442\u044c", item["says"])
+
+    def test_the_api_key_sentence_reaches_the_printed_report(self):
+        env = dict(os.environ, ANTHROPIC_API_KEY="x")
+        for code, words in (("en", "the remote will not work"),
+                            ("ru", "\u043f\u0443\u043b\u044c\u0442 \u043d\u0435 \u0431\u0443\u0434\u0435\u0442 "
+                                   "\u0440\u0430\u0431\u043e\u0442\u0430\u0442\u044c")):
+            done = subprocess.run([sys.executable, str(SCRIPTS / "check.py"), "--dir", str(self.project),
+                                   "--lang", code], capture_output=True, text=True, env=env,
+                                  encoding="utf-8")
+            self.assertIn(words, done.stdout, code)
+
+    def test_an_api_key_in_a_settings_file_is_caught_too(self):
+        self.settings("settings.json", {"env": {"ANTHROPIC_API_KEY": "x"}})
+        item = find(check.check_quiet_killers(self.project), "env:ANTHROPIC_API_KEY")
+        self.assertIsNotNone(item)
+        self.assertIn("settings.json", item["says"])
+
+    def test_an_api_key_helper_is_an_api_key(self):
+        self.settings("settings.json", {"apiKeyHelper": "/bin/echo key"})
+        item = find(check.check_quiet_killers(self.project), "setting:apiKeyHelper")
+        self.assertIsNotNone(item)
+        self.assertFalse(item["ok"])
+
+    def test_foundry_is_another_company_cloud(self):
+        os.environ["CLAUDE_CODE_USE_FOUNDRY"] = "1"
+        item = find(check.check_quiet_killers(self.project), "env:CLAUDE_CODE_USE_FOUNDRY")
+        self.assertFalse(item["ok"])
+        self.assertIn("Tailscale", item["do"])
+
+    def test_the_two_hard_switches_stop_the_remote_on_any_version(self):
+        for name in check.HARD_KILLERS:
+            os.environ[name] = "1"
+            item = find(check.check_quiet_killers(self.project, version=(2, 1, 300)), f"env:{name}")
+            self.assertFalse(item["ok"], name)
+            os.environ.pop(name)
+
+    def test_telemetry_alone_does_not_stop_a_new_claude_code(self):
+        for name in check.SOFT_KILLERS:
+            os.environ[name] = "1"
+            items = check.check_quiet_killers(self.project, version=(2, 1, 283))
+            item = find(items, f"env:{name}")
+            self.assertTrue(item["ok"], name)
+            self.assertIn("Trusted Devices", item["do"])
+            self.assertTrue(all(i["ok"] for i in items))
+            os.environ.pop(name)
+
+    def test_telemetry_stops_the_remote_under_trusted_devices(self):
+        os.environ["DISABLE_TELEMETRY"] = "1"
+        item = find(check.check_quiet_killers(self.project, version=(2, 1, 300), trusted_devices=True),
+                    "env:DISABLE_TELEMETRY")
+        self.assertFalse(item["ok"])
+
+    def test_telemetry_stops_an_old_claude_code(self):
+        os.environ["DO_NOT_TRACK"] = "1"
+        item = find(check.check_quiet_killers(self.project, version=(2, 1, 282)), "env:DO_NOT_TRACK")
+        self.assertFalse(item["ok"])
+        self.assertIn("2.1.283", item["do"])
+
+    def test_a_killer_in_the_managed_settings_is_found(self):
+        self.policy({"env": {"DISABLE_GROWTHBOOK": "1"}})
+        item = find(check.check_quiet_killers(self.project), "env:DISABLE_GROWTHBOOK")
+        self.assertIsNotNone(item)
+        self.assertIn("managed-settings.json", item["says"])
+
+    def test_the_administrator_turning_the_remote_off_is_named(self):
+        (self.managed / "managed-settings.d").mkdir()
+        self.policy({"disableRemoteControl": True}, "managed-settings.d/10-remote.json")
+        item = find(check.check_quiet_killers(self.project), "managed:disableRemoteControl")
+        self.assertIsNotNone(item)
+        self.assertFalse(item["ok"])
+        self.assertIn("IT administrator", item["do"])
+
+    def test_no_policy_file_says_nothing_about_channels(self):
+        self.assertIsNone(check.check_channels())
+
+    def test_channels_off_by_policy_say_who_turns_them_on(self):
+        self.policy({"permissions": {}})
+        item = check.check_channels()
+        self.assertTrue(item["ok"])
+        self.assertIn("channelsEnabled", item["do"])
+        self.assertIn("allowedChannelPlugins", item["do"])
+
+    def test_channels_on_by_policy_name_the_allowed_plugins(self):
+        self.policy({"channelsEnabled": True, "allowedChannelPlugins": [
+            {"marketplace": "claude-plugins-official", "plugin": "telegram"}]})
+        item = check.check_channels()
+        self.assertIn("telegram", item["says"])
+        self.assertIn(item, check.collect(self.project, home=self.project))
+
+
+class TestLanguages(unittest.TestCase):
+    def load(self, code):
+        return json.loads((ROOT / "lang" / f"{code}.json").read_text(encoding="utf-8"))
+
+    def test_every_language_has_every_word(self):
+        keys = {k for k in self.load("en") if not k.startswith("_")} - {"card_file"}
+        for code in check.LANGUAGES:
+            have = {k for k in self.load(code) if not k.startswith("_")} - {"card_file"}
+            self.assertEqual(have, keys, code)
+
+    def test_every_word_keeps_its_placeholders(self):
+        english = self.load("en")
+        for code in check.LANGUAGES:
+            words = self.load(code)
+            for key, text in english.items():
+                if isinstance(text, str) and not key.startswith("_") and key != "card_file":
+                    self.assertEqual(set(re.findall(r"{(\w+)}", text)),
+                                     set(re.findall(r"{(\w+)}", words[key])), f"{code}:{key}")
+
+    def test_the_card_builds_in_every_language_with_the_rule_on_it(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import card
+        for code in check.LANGUAGES:
+            words = check.lang_words(code)
+            text = card.build("pocket-out", "03.10.2026", "/x/Dropbox/phone", words)
+            self.assertIn("pocket-out/", text, code)
+            self.assertIn("/x/Dropbox/phone", text, code)
+            self.assertEqual(len(words["card"]), len(self.load("en")["card"]), code)
+        self.assertIn("DO NOT APPROVE ON THE PHONE WHAT YOU CANNOT SEE", card.build("pocket-out", "x"))
+
+    def test_the_language_is_picked_from_the_flag_then_the_system(self):
+        saved = dict(os.environ)
+        try:
+            for name in ("POCKETCALL_LANG", "LC_ALL", "LC_MESSAGES", "LANG"):
+                os.environ.pop(name, None)
+            self.assertEqual(check.pick_lang(), "en")
+            os.environ["LANG"] = "uk_UA.UTF-8"
+            self.assertEqual(check.pick_lang(), "uk")
+            self.assertEqual(check.pick_lang("es"), "es")
+            os.environ["LANG"] = "de_DE.UTF-8"
+            self.assertEqual(check.pick_lang(), "en")
+        finally:
+            os.environ.clear()
+            os.environ.update(saved)
 
 
 if __name__ == "__main__":

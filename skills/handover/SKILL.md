@@ -36,6 +36,10 @@ which file, what happens to it, and whether it can be undone. On a small screen,
 approves what they can read and guesses at what they cannot. Make it readable and the guess
 never happens.
 
+The person was told one rule before they left: **do not approve on the phone what you cannot
+see.** Keep your side of it - if the question would reach them without the file, the change and
+whether it can be undone, it is your question that is wrong, not their caution.
+
 If what you need is something the fence forbids, or something that would be irreversible, do
 not ask for it from the phone at all. Write it down for when they are back at the desk, and
 say that is what you did. A yes given in a corridor is not the same yes.

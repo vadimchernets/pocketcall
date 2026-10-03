@@ -63,6 +63,83 @@ class TestReady(unittest.TestCase):
         self.assertIn("never move, rename or open what is already in there", body)
 
 
+RULE = "do not approve on the phone what you cannot see"
+
+
+class TestTheRuleForThePhone(unittest.TestCase):
+    """One rule a person carries out of the house: no yes to something they could not read."""
+
+    def test_leave_says_the_rule_in_its_own_words_and_heading(self):
+        body = body_of("leave")
+        self.assertIn(RULE, " ".join(body.lower().split()))
+        headings = [line.lower() for line in body.splitlines() if line.startswith("## ")]
+        self.assertTrue(any(RULE in h for h in headings), headings)
+
+    def test_handover_keeps_the_assistants_side_of_it(self):
+        self.assertIn(RULE, " ".join(body_of("handover").lower().split()))
+
+    def test_the_card_carries_it_in_every_language(self):
+        english = json.loads(text_of("lang", "en.json"))["card"]
+        self.assertIn(RULE.upper(), english)
+        at = english.index(RULE.upper())
+        for code in ("es", "pt", "ru", "uk"):
+            card = json.loads(text_of("lang", f"{code}.json"))["card"]
+            self.assertTrue(card[at].isupper(), (code, card[at]))
+            self.assertTrue(card[at + 1].strip() and card[at + 2].strip(), code)
+
+
+class TestWorkBranches(unittest.TestCase):
+    """The ready skill walks a work account down branch A, B or C, with the real commands."""
+
+    def test_three_branches_have_headings(self):
+        headings = [line for line in body_of("ready").splitlines() if line.startswith("### ")]
+        for letter in ("A - ", "B - ", "C - "):
+            self.assertTrue(any(h.startswith("### " + letter) for h in headings), headings)
+
+    def test_branch_a_names_the_owner_toggle_and_trusted_devices(self):
+        body = body_of("ready")
+        for fact in ("claude.ai/admin-settings/claude-code", "**Remote Control**",
+                     "claude.ai/admin-settings/capabilities", "--trusted-devices",
+                     "--spawn worktree", "tmux new -s work"):
+            self.assertIn(fact, body)
+
+    def test_branch_b_moves_the_work_to_the_cloud_and_back(self):
+        body = body_of("ready")
+        for fact in ('claude --cloud "', "claude --teleport <session-id>", "CCR_FORCE_BUNDLE=1",
+                     'claude -p "message" --cloud <session-id>'):
+            self.assertIn(fact, body)
+
+    def test_branch_c_is_ssh_and_tmux_over_tailscale(self):
+        body = body_of("ready")
+        for fact in ("Bedrock", "ZDR", "HIPAA", "Tailscale", "Blink", "Termius", "tmux attach -t work"):
+            self.assertIn(fact, body)
+
+    def test_channels_name_the_two_managed_keys(self):
+        body = body_of("ready")
+        for fact in ("channelsEnabled", "allowedChannelPlugins", "claude --channels plugin:"):
+            self.assertIn(fact, body)
+
+    def test_leave_follows_the_branch_ready_picked(self):
+        body = body_of("leave")
+        self.assertIn("branch B or C", body)
+        self.assertIn("admin-settings/claude-code", body)
+
+
+class TestVoiceNote(unittest.TestCase):
+    def test_a_voice_note_goes_to_chasecall_or_nightcall_not_to_action(self):
+        body = body_of("leave")
+        self.assertIn("voice note", body)
+        self.assertIn("/chasecall:take", body)
+        self.assertIn("/nightcall:start", body)
+        self.assertIn("you do not act on it on the", body)
+
+
+class TestLanguagesAreOffered(unittest.TestCase):
+    def test_both_scripts_are_run_in_the_persons_language(self):
+        self.assertIn("check.py --dir . --lang", body_of("ready"))
+        self.assertIn("card.py --dir . --lang", body_of("leave"))
+
+
 class TestReadme(unittest.TestCase):
     def test_the_readme_counts_seven_and_not_six(self):
         body = text_of("README.md")

@@ -1,6 +1,6 @@
 ---
 name: leave
-description: Walk the person through the four minutes before they go out of the door, ending with one real message answered from the phone, and after that the thirty seconds at the door they repeat every time. Use when they are about to leave and want the work to keep going, when they say they are going out with the phone, or the first time they try the remote.
+description: Walk the person through the four minutes before they go out of the door, ending with one real message answered from the phone, and after that the thirty seconds at the door they repeat every time. Use when they are about to leave and want the work to keep going, when they say they are going out with the phone, or the first time they try the remote. On a work account it follows the branch the ready check picked (the built-in remote, a cloud session, or SSH and tmux), and it covers the rule for approving from the phone and where a voice note from the street goes.
 allowed-tools: Bash(sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/card.py *) PowerShell(${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1 pocketcall say scripts/card.py *)
 ---
 
@@ -44,7 +44,13 @@ Go one step at a time and wait for the person after each.
 
 4. **Turn the remote on.** Have the person type `/remote-control` here. The first time, a
    dialog asks to enable it; they choose **Enable Remote Control**. Say that this carries the
-   conversation you are having now — it is not a new chat.
+   conversation you are having now — it is not a new chat. On a Team or Enterprise plan, if it
+   answers that Remote Control is not enabled for the organization, an Owner has to turn on
+   the toggle at claude.ai/admin-settings/claude-code first (branch A in the `ready` skill).
+   If `ready` sent them to branch B or C, this step is that branch instead: B is
+   `claude --cloud "the task"`, joined from the **Code** tab; C is `claude` inside
+   `tmux new -s work` here, joined with `ssh` and `tmux attach -t work` from the phone.
+   Steps 5 and 6 happen just the same on that path.
 
 5. **Join from the phone.** They scan the code shown, or open the **Code** tab and pick the
    session by name. Wait until they say they can see this conversation on the phone. Do not
@@ -78,9 +84,41 @@ run out, and nobody can tell them the shared folder has stopped syncing. Both si
 The second one has a one-second test and they do it now, not in town: put one photo in from
 the phone and see it arrive here.
 
+## Do not approve on the phone what you cannot see
+
+Say this rule to the person in these words, once, before they leave: **do not approve on the
+phone what you cannot see.** A permission question on a phone shows two lines of a command and
+a big button. If it does not say which file, what happens to it, and whether it can be undone,
+the answer is no, or "wait until I am at the desk" - waiting loses nothing, the question keeps.
+It is on the card, under its own heading, so it is in their pocket when the question comes.
+
+Your half of the rule, for the whole evening: before any permission question reaches the phone,
+say in four lines or fewer which file, what changes, and whether it can be undone. Anything
+irreversible - sending, paying, deleting, pushing - is not asked from the phone at all; write it
+into the handover folder for the desk and say that is what you did.
+
+## A thought on the way: a voice note into the queue
+
+In town the person has thirty seconds and no patience for typing. Tell them where a spoken
+thought goes, so it does not get lost and does not get acted on half-heard:
+
+- **Into the remote, by voice.** The microphone on the phone keyboard turns speech into the
+  message they send in the **Code** tab. You put it in a queue; you do not act on it on the
+  spot unless they said "do it now".
+- **Something that has to be chased** - a refund, a call back, a document someone owes them -
+  goes to Chasecall: `/chasecall:take` with their words, from here. Or, without the remote, a
+  voice memo shared into the Chasecall inbox folder, which they sort at home with "what came
+  from my phone?".
+- **A long job for tonight** goes to Nightcall: write their words unchanged into the handover
+  folder as `for-tonight-<date>.md`, and at home `/nightcall:start` takes that text as the
+  task, with its five minutes together before the night begins.
+- **Neither plugin installed?** The note still goes into the handover folder as a file, word
+  for word. Nothing spoken in the street is lost, and nothing is done on a guess.
+
 ## Then give them the card
 
-Run `sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/card.py --dir .`, show the card, and tell them
+Run `sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/card.py --dir . --lang en`, with the person's
+own language after `--lang` (`en`, `es`, `pt`, `ru` or `uk`), show the card, and tell them
 to print it. The five lines at the door and the four reasons the phone goes quiet are on it,
 and a person who has those on a wall does not panic in a corridor. If the `ready` check named
 a shared folder, pass it along with `--shared` so the card carries the real path.

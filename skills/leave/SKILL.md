@@ -17,7 +17,7 @@ form this skill's permission covers. Only if that path has a space in it, write
 `@'…'@ | ${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1 …` (`| & "…"` if the path has a space) instead of `<<'EOF'` — also asked once.
 Never call `python3`, `python` or `py` yourself: the launcher finds a real Python 3.8+ (`python`,
 then `py -3`, then `python3`) and never starts the Microsoft Store or Apple stub. If it answers
-with one line saying pocketcall "is paused" because this computer has no working Python 3 yet, tell the
+with one line saying pocketcall "is paused" until this computer has Python 3, tell the
 person that in one plain line and go on by hand — never show them a Python error and stop.
 
 Four minutes, six steps, and the last one is the only proof that counts: a message sent from
@@ -79,10 +79,10 @@ says "plugged in" looks at the cable, and a person who reads it does not.
 5. **Phone in hand before the door, not after it.** Signed in as them, notifications allowed,
    and one message sent from where they are standing right now.
 
-Then say the two things that are true and unwelcome: nobody can tell them the allowance has
-run out, and nobody can tell them the shared folder has stopped syncing. Both simply go quiet.
-The second one has a one-second test and they do it now, not in town: put one photo in from
-the phone and see it arrive here.
+Then give them the two facts that keep the evening alive: when the allowance has run out, the
+session simply goes quiet, so they look at it now; and a shared folder that has stopped syncing
+goes quiet too, so they prove it now with a one-second test: put one photo in from the phone and
+see it arrive here.
 
 ## Do not approve on the phone what you cannot see
 

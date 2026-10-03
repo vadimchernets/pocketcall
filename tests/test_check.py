@@ -177,7 +177,7 @@ class TestSharedFolder(TempProject):
         item = check.check_sync(self.project, home=self.project)
         self.assertNotIn("is syncing", item["says"])
         self.assertNotIn("synced", item["says"])
-        self.assertIn("nothing on this machine can prove", item["do"])
+        self.assertIn("One photo proves", item["do"])
         self.assertIn("put one photo in from the phone", item["do"])
 
     def test_the_handover_folder_inside_the_drive_is_the_one_named(self):
@@ -265,9 +265,10 @@ class TestReport(TempProject):
         for item in items:
             self.assertIn(item["says"], text)
 
-    def test_the_closing_paragraph_admits_the_sync_is_unseen(self):
+    def test_the_closing_paragraph_leaves_the_sync_to_one_test_photo(self):
         text = check.report(check.collect(self.project, home=self.project))
         self.assertIn("whether the shared folder is really syncing", text)
+        self.assertIn("one test photo", text)
 
     def test_a_failure_is_never_summarised_away(self):
         items = [{"id": "x", "ok": False, "says": "Something is wrong.", "do": "Fix it."}]

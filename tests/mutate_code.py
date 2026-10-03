@@ -61,6 +61,9 @@ MUTATIONS = (
     ("branch B loses the way to the cloud without GitHub", "skills/ready/SKILL.md",
      "`CCR_FORCE_BUNDLE=1 claude --cloud \"the task\"`", "`claude --cloud \"the task\"`",
      WORDS + "::TestWorkBranches", "red"),
+    ("the README slips an excuse back in", "README.md",
+     "Keep it awake and the evening works.", "Keep it awake and the evening works, for now.",
+     "tests/test_no_disclaimers.py", "red"),
 )
 
 

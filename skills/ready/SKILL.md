@@ -17,7 +17,7 @@ form this skill's permission covers. Only if that path has a space in it, write
 `@'…'@ | ${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1 …` (`| & "…"` if the path has a space) instead of `<<'EOF'` — also asked once.
 Never call `python3`, `python` or `py` yourself: the launcher finds a real Python 3.8+ (`python`,
 then `py -3`, then `python3`) and never starts the Microsoft Store or Apple stub. If it answers
-with one line saying pocketcall "is paused" because this computer has no working Python 3 yet, tell the
+with one line saying pocketcall "is paused" until this computer has Python 3, tell the
 person that in one plain line and go on by hand — never show them a Python error and stop.
 
 Run the check, read it out loud, fix what the person agrees to fix. Do not turn the remote on
@@ -32,8 +32,8 @@ inside this skill: that is the next step and the person does it knowingly.
 2. For each line marked NOT, offer to do the part you can do, one at a time, and wait:
    - the handover folder: make it, and say where it is;
    - the handover rule: show the two lines before you write them into CLAUDE.md;
-   - the sleep setting: you cannot change it and must not try. Tell the person which
-     setting and let them open it themselves. Then run the check again and read the result.
+   - the sleep setting: the person sets it themselves. Name the setting and where it is,
+     let them open it, then run the check again and read the result.
    - the shared folder: if the check found none, help them pick one inside Google Drive or
      Dropbox — not iCloud Drive if the phone in their pocket is an Android one — and run the
      check again with `--shared` and that folder. Make a folder inside their drive only where
@@ -42,8 +42,8 @@ inside this skill: that is the next step and the person does it knowingly.
    it will not come up, and it will not say why. Fix what can be fixed. If the line is one
    the person cannot change - a company API key, Bedrock, Google Cloud, Foundry, a required
    gateway, or the administrator's `disableRemoteControl` - go to "At work: three branches"
-   below and pick the branch that does work for them. That is not a lesser way; for their
-   company it is the way.
+   below and pick the branch that works for them. For their company it is the way the
+   evening runs.
 4. When everything is ok, say the one sentence that matters and then stop:
    "The machine is ready. Turning the remote on is `/remote-control`, and it will show a
    code for your phone to scan."
@@ -151,7 +151,7 @@ preview.
   handing a sign-in to another company is against the terms and that they should not. Branch
   C is not that: Tailscale and an SSH app never see the Claude account, they carry a terminal
   to the person's own computer.
-- Do not say the shared folder is syncing. Nothing on this machine can see that: a drive can
-  be signed out, paused, full or quietly stuck and the folder looks the same. Read out what
-  the check does see — the folder, the number of files, the date of the last change — and give
-  them the test that proves it: one photo in from the phone, watched arriving here.
+- Do not say the shared folder is syncing; prove it. A drive can be signed out, paused, full
+  or quietly stuck while the folder looks the same, so read out what the check sees — the
+  folder, the number of files, the date of the last change — and give them the test that
+  proves it: one photo in from the phone, watched arriving here.

@@ -510,7 +510,7 @@ def report(items: list[dict]) -> str:
     else:
         lines.append(t("report_ready"))
     lines.append("")
-    lines.append(t("report_cannot_see"))
+    lines.append(t("report_look_yourself"))
     return "\n".join(lines)
 
 

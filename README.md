@@ -99,15 +99,14 @@ Both scripts are standard library only, read-only, and talk to nothing over the 
    of yours overrides. When those managed settings exist, `ready` also reads what they say about
    Channels (`channelsEnabled`, `allowedChannelPlugins`).
 5. **Sleep.** On a Mac, `ready` reads the actual setting and tells you the number of minutes.
-   Elsewhere it names the setting and asks you to look, because changing a person's power
-   settings for them is not something a program should do.
+   Elsewhere it names the setting, and you set it once.
 6. **The handover.** Is there a folder your phone can see, and does your rules file say that
    finished work goes there?
 7. **The shared folder.** The folder you drop a photo into from the street and the work reads
    at home — Google Drive or Dropbox, and not iCloud Drive if the phone in your pocket runs
    Android. `ready` finds it, says how many files are in it and when anything last changed,
-   and says plainly that it cannot see whether the drive is carrying it anywhere. Point it at
-   the right folder with `--shared` if it guessed wrong.
+   and gives you the one-photo test that proves the drive carries it. Point it at the right
+   folder with `--shared` if it guessed wrong.
 
 ## At work: three branches
 
@@ -142,38 +141,31 @@ note from the street goes into a queue, not into action**: something to chase go
 a long job for tonight goes to Nightcall through the handover folder, and with neither installed
 it still lands in that folder word for word.
 
-## What it refuses to pretend
+## What is true about an evening away
 
-- **A sleeping computer does no work.** Not less work: none. What is true and worth knowing
-  is the rest of it: nothing is lost, and the connection comes back by itself when the
-  machine wakes. The hours do not come back.
-- **There is no separate mobile app for the terminal tool.** It is a tab inside the ordinary
-  assistant app. Anything in a store under the other name belongs to someone else.
-- **You cannot be told that your allowance ran out.** At the moment it runs out, nothing can
-  speak. So the card says it in advance instead.
-- **Nothing here can tell you a folder is syncing.** A drive app can be signed out, paused,
-  out of space, or stuck on one file, and the folder on disk looks exactly the same in all four
-  cases. So `ready` reports what is actually visible — the folder, the number of files, the
-  date of the last change — and hands you the only thing that proves it: put one photo in from
-  the phone before you leave and watch that date change. A check that guessed here would be
-  worse than no check, because it would be believed.
-- **Getting finished work back to the phone is not promised by anything.** Sending a photo or
-  a file *from* the phone is. That asymmetry is exactly why the handover folder exists, and
-  why `leave` makes you open one real file on the phone before you trust the arrangement.
-- **Never sign in to your assistant account inside another company's app or site that offers
-  you a remote.** Handing over a sign-in or a session token is against the terms of the
-  service you pay for, and the products that ask for it are the ones to walk away from. A
-  good number of them stopped existing during 2026; one of them deprecated itself in favour
-  of the built-in remote. Pocketcall asks for no account, no token, and no sign-in, and never
-  will.
+- **The work runs while the computer is awake.** Keep it awake and the evening works. If it
+  does sleep, nothing is lost, and the connection comes back by itself the moment it wakes.
+- **The phone side is the Code tab in the ordinary assistant app.** Anything in a store under
+  the terminal tool's name belongs to someone else.
+- **The allowance is on the card in advance.** When it runs out the session simply goes quiet,
+  so the card tells you before you leave.
+- **One photo proves a folder is syncing.** A drive app can be signed out, paused, out of space
+  or stuck on one file while the folder on disk looks the same, so `ready` reports what is
+  visible — the folder, the number of files, the date of the last change — and hands you the
+  proof: put one photo in from the phone before you leave and watch that date change.
+- **Finished work comes back through the handover folder.** The phone sends photos and files
+  on its own; the way back is a file in the handover folder, and `leave` has you open one real
+  file on the phone before you rely on it.
+- **Your sign-in stays yours.** Never sign in to your assistant account inside another
+  company's app or site that offers you a remote: handing over a sign-in or a session token is
+  against the terms of the service you pay for. Pocketcall asks for no account, no token and no
+  sign-in.
 
 ## What leaves your house, and what does not
 
 While a remote session is connected, the conversation is kept on the provider's servers so
 that every screen you own shows the same thing. Your files stay on your machine and the work
-happens there. Those are two different things, and a person is owed both halves of that
-sentence before they turn anything on. Pocketcall states it on the printed card for that
-reason.
+happens there. Those are two different things, and the printed card says both.
 
 ## Languages
 
@@ -190,8 +182,8 @@ python3 scripts/check_language.py
 ```
 
 The tests run the checks against temporary directories, recorded settings files and a stand-in
-folder for the organization's managed settings. They do not need a subscription, a network, or
-a phone. `tests/mutate_code.py` (run by the tests too) breaks each promise in a copy — the API-key
+folder for the organization's managed settings. They run with no subscription, no network and
+no phone. `tests/mutate_code.py` (run by the tests too) breaks each promise in a copy — the API-key
 sentence in English and Russian, the rule about approving from the phone, the Trusted Devices
 logic, the administrator's switch — and expects red, with one control that stays green.
 

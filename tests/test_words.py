@@ -151,8 +151,10 @@ class TestReadme(unittest.TestCase):
         self.assertIn("**The shared folder.**", body)
         self.assertIn("--shared", body)
 
-    def test_the_readme_refuses_to_pretend_it_can_see_a_sync(self):
-        self.assertIn("Nothing here can tell you a folder is syncing", text_of("README.md"))
+    def test_the_readme_proves_a_sync_with_one_photo(self):
+        body = text_of("README.md")
+        self.assertIn("One photo proves a folder is syncing", body)
+        self.assertIn("put one photo in from the phone", body)
 
 
 class TestManifests(unittest.TestCase):

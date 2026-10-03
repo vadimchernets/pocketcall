@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1 — 2026-10-03
+
+- **Wording: no disclaimers.** Pocketcall says what works as a capability. The card's "what the phone cannot
+  do" is now "five things that keep the evening alive"; the report closes with what the person looks at
+  themselves (one test photo for the shared folder) instead of what the check cannot see; the README's "what it
+  refuses to pretend" is "what is true about an evening away"; the sleep and sync lines say what to do; the
+  launcher's no-Python line says Pocketcall starts the moment Python 3 is there. All five languages.
+  `SECURITY.md` is the reporting route and what the scripts touch. New `tests/test_no_disclaimers.py` keeps
+  stop phrases (own risk, not legal advice, for now, unfortunately, honestly, sorry and their Russian and
+  Ukrainian twins) out of every text a person or the model reads.
+
 ## 0.3.0 — 2026-10-03
 
 - **At work: three branches** in `ready`, followed by `leave`. A — the computer stays on: the built-in

@@ -86,16 +86,18 @@ itself after three days, a closed session at once.
 A job with a task folder - a nightcall night or a long build (nightcall 0.5.0 puts its folder and its own
 command on the board) - rings with two buttons in Telegram: **Continue** and **Stop**. Stop leaves a STOP file
 in the folder, and the night loop ends after the step it is on; Continue takes the STOP away, and a night that
-already ended goes on with its own command (the earlier MORNING.md is kept under a dated name). Typing "stop" or
+already ended goes on to the night's own end through nightcall's loop on this computer (the card holds only data -
+folder, hours, end, box - and steer.py builds the command itself; the earlier MORNING.md is kept under a dated name). Typing "stop" or
 "continue" (in any of the five languages, with part of the name when several run) does the same.
 
 A voice note in the same chat becomes the next task: it is transcribed on this computer (mlx-whisper, whisper,
 whisper.cpp, or the person's own OPENAI_API_KEY / GROQ_API_KEY), and lands as `TASK.md` in a new folder of the
 inbox; `task: ...` typed does the same. With `--start` the task begins at once - for example a night through
-nightcall's loop. The listener runs on the computer that stays on (start it with the Bash tool's background run):
+nightcall's loop. The listener runs on the computer that stays on; `steer.py install` keeps it running after this
+session ends (a LaunchAgent on a Mac, a systemd user service on Linux, restarted if it stops):
 
     sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/steer.py inbox --to "<folder for tasks from the phone>" --start "<command with {folder}>"
-    sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/steer.py listen
+    sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/steer.py install
 
 At the desk the same: `steer.py stop --id <job>` / `steer.py continue --id <job>` (the id is in `board.py show --json`).
 Only the Telegram ids on the allowlist of `remote.py telegram` steer. A job with `--meter` shows how much each

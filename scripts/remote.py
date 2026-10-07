@@ -22,6 +22,7 @@ desk there, which takes the phone's notes and sends pull request cards while the
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import re
@@ -34,6 +35,11 @@ import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -230,7 +236,7 @@ class Telegram:
             kind, _, qid = str(q.get("data", "")).partition(":")
             if update.get("message") or kind in ("c", "s"):
                 import steer  # noqa: PLC0415 - steer imports this module
-                steer.spool_message(update)
+                steer.spool_message(update, self.allow)
                 continue
             if kind not in PRESSES or not ID.match(qid):
                 continue
@@ -254,7 +260,37 @@ def channels(cfg: dict, words: dict) -> list:
     return out
 
 
+@contextlib.contextmanager
+def poll_lock(block: bool = True):
+    """One process reads the bot's updates at a time (Telegram answers 409 to a second getUpdates).
+    Yields True when this process holds the lock."""
+    handle, held = None, False
+    try:
+        home().mkdir(parents=True, exist_ok=True)
+        handle = open(home() / ".telegram-poll.lock", "a")
+        if fcntl:
+            fcntl.flock(handle, fcntl.LOCK_EX | (0 if block else fcntl.LOCK_NB))
+        held = True
+    except OSError:
+        held = not fcntl            # no fcntl (Windows): no lock to take, go on as before
+    try:
+        yield held
+    finally:
+        if handle:
+            try:
+                if fcntl and held:
+                    fcntl.flock(handle, fcntl.LOCK_UN)
+                handle.close()
+            except OSError:
+                pass
+
+
 def ask(card: dict, cfg: dict, words: dict, wait: float) -> str | None:
+    with poll_lock(block=True):
+        return _ask(card, cfg, words, wait)
+
+
+def _ask(card: dict, cfg: dict, words: dict, wait: float) -> str | None:
     """Send the card everywhere this computer is paired and return the first answer: "yes", "no",
     or None when nobody answered in time (the question then stays on the screen at the desk)."""
     live = []

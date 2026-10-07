@@ -298,8 +298,8 @@ new folder of the inbox (with `--start`, it begins at once). The meter of subscr
 · Codex 72% · Gemini ?", from nightcall's "my subscriptions") shows as bars on the phone page.
 
 ```
-python3 scripts/steer.py inbox --to ~/Tasks --start 'bash ~/nightcall/scripts/night-loop.sh {folder} 8'
-python3 scripts/steer.py listen        # on the computer that stays on
+python3 scripts/steer.py inbox --to ~/Tasks --start 'bash ~/nightcall/scripts/night-loop.sh {folder} 8'   # split into words, no shell
+python3 scripts/steer.py install       # the listener on the computer that stays on, kept alive after the session
 ```
 
 ## What is true about an evening away

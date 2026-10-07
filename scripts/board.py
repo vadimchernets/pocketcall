@@ -20,9 +20,12 @@ you: a job waits for an answer, a job is done, a job rests on a limit (with the 
                                             any long command on the board: working while it runs, done or
                                             stopped (with its last line) when it ends - a diffcall fix with
                                             --wait, a test suite, a build, a deploy
-    board.py put ... [--folder <task folder>] [--resume <command>] [--meter "<Claude 44% · Codex 100%>"] [--say]
+    board.py put ... [--folder <task folder>] [--kind night --hours N --end <epoch> [--box]]
+                 [--meter "<Claude 44% · Codex 100%>"] [--say]
                                             a job with a folder gets Stop and Continue buttons on the phone
-                                            (steer.py); --meter shows how much each subscription has left;
+                                            (steer.py). The card holds DATA only - kind, folder, hours, end,
+                                            box - and steer.py builds the Continue command itself, with no
+                                            shell; --meter shows how much each subscription has left;
                                             --say rings this line now (a change of hands, say)
     board.py clear [--all]                  drop finished jobs (all jobs with --all)
     board.py hook                           the plugin's hook (UserPromptSubmit, Notification, PostToolUse,
@@ -345,7 +348,7 @@ def put(job: dict, words: dict, lang: str, now: float | None = None, quiet: bool
         before = get(job["id"])
         _write(folder() / f"{job['id']}.json", {k: job.get(k, "") for k in
                                                   ("id", "name", "where", "state", "note", "until", "at", "task",
-                                                   "folder", "resume", "meter")})
+                                                   "folder", "kind", "hours", "end", "box", "meter")})
     cfg = load_settings()
     rang = []
     changed = job["state"] in RINGS and before.get("state") != job["state"]
@@ -549,7 +552,10 @@ def main(argv=None) -> int:
     p.add_argument("--id", default="")
     p.add_argument("--ring", action="store_true", help="ring on a change even at the desk (not with --when never)")
     p.add_argument("--folder", default="", help="the job's task folder: Stop and Continue from the phone")
-    p.add_argument("--resume", default="", help="the command that goes on with the job (Continue)")
+    p.add_argument("--kind", default="", choices=("", "night"), help="night: Continue restarts nightcall's loop")
+    p.add_argument("--hours", type=float, default=0, help="the night's length in hours")
+    p.add_argument("--end", type=float, default=0, help="when the night ends (seconds since 1970)")
+    p.add_argument("--box", action="store_true", help="the night runs in nightcall's box: Continue keeps it there")
     p.add_argument("--meter", default="", help="how much each subscription has left, one line")
     p.add_argument("--say", action="store_true", help="ring this line now, even with no change of state")
     rl = sub.add_parser("ring-line")
@@ -596,7 +602,8 @@ def main(argv=None) -> int:
     if args.cmd == "put":
         job = put({"id": args.id or args.name, "name": args.name, "where": args.where,
                    "state": args.state, "note": args.note, "until": args.until, "folder": args.folder,
-                   "resume": args.resume, "meter": args.meter}, words, lang, force=args.ring, say=args.say)
+                   "kind": args.kind, "hours": args.hours or "", "end": args.end or "", "box": bool(args.box),
+                   "meter": args.meter}, words, lang, force=args.ring, say=args.say)
         print(line_of(job, words))
         if job["rang"]:
             print(words["board_rang"].format(where=", ".join(job["rang"])))

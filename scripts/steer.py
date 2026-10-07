@@ -83,19 +83,53 @@ def stop(job_id: str, words: dict) -> str:
     return words["steer_stopped"].format(job=job.get("name") or job_id)
 
 
+def night_loop() -> str:
+    """nightcall's own loop on THIS computer: POCKETCALL_NIGHTLOOP (the owner's environment), else the newest
+    installed nightcall plugin. Never a path or a command taken from a job card."""
+    named = os.environ.get("POCKETCALL_NIGHTLOOP", "")
+    if named:
+        return named if os.path.isfile(named) else ""
+    roots = [Path(os.environ["CLAUDE_CONFIG_DIR"])] if os.environ.get("CLAUDE_CONFIG_DIR") else []
+    roots.append(Path.home() / ".claude")
+    found = [p for r in roots for p in r.glob("plugins/cache/*/nightcall/*/scripts/night-loop.sh")]
+    return str(max(found, key=lambda p: p.stat().st_mtime)) if found else ""
+
+
+def night_argv(job: dict, folder: Path) -> tuple:
+    """Continue for a night run, built here from the card's DATA (kind, folder, hours, end, box), with no shell:
+    a card is a file other programs can write, so it never carries a command. ([], None) for anything else."""
+    if job.get("kind") != "night" or not (folder / "PLAN.md").is_file():
+        return [], None
+    loop = night_loop()
+    if not loop:
+        return [], None
+    try:
+        hours = max(1, int(float(job.get("hours") or 8)))
+        end = float(job.get("end") or 0)
+    except (TypeError, ValueError):
+        hours, end = 8, 0
+    if end > time.time():                      # Continue goes on to the night's own end, not a fresh full night
+        hours = max(1, int((end - time.time() + 3599) // 3600))
+    env = dict(os.environ)
+    if job.get("box") is True:
+        env["NIGHTCALL_BOX"] = "1"             # the night was in the box: it goes on in the box
+    return ["bash", loop, str(folder), str(hours)], env
+
+
 def go_on(job_id: str, words: dict, lang: str) -> str:
     job = board.get(job_id)
     folder = Path(job.get("folder") or "")
     if not job.get("folder") or not folder.is_dir():
         return words["steer_no_folder"].format(job=job.get("name") or job_id)
     (folder / "STOP").unlink(missing_ok=True)
-    if job.get("state") == "working" or not job.get("resume"):
+    argv, env = night_argv(job, folder)
+    if job.get("state") == "working" or not argv:
         return words["steer_goes_on"].format(job=job.get("name") or job_id)
     morning = folder / "MORNING.md"           # a report already written ends a night loop at once
     if morning.exists():
         morning.rename(folder / f"MORNING-{time.strftime('%Y%m%d-%H%M')}.md")
     with open(folder / "steer.log", "a", encoding="utf-8") as log:
-        subprocess.Popen(job["resume"], shell=True, cwd=str(folder), stdin=subprocess.DEVNULL, stdout=log,
+        subprocess.Popen(argv, cwd=str(folder), env=env, stdin=subprocess.DEVNULL, stdout=log,
                          stderr=subprocess.STDOUT, start_new_session=True)
     board.put(dict(job, state="working", note=words["steer_resumed_note"]), words, lang, quiet=True)
     return words["steer_resumed"].format(job=job.get("name") or job_id)
@@ -109,13 +143,21 @@ def steerable() -> list:
     return [j for j in board.jobs() if j.get("folder")]
 
 
+def command_of(text: str) -> tuple:
+    """("s"|"c"|"", the rest): the command is the whole first word (or "go on"), never a prefix of one."""
+    low = " ".join(text.strip().lower().split())
+    for kind, table in (("s", STOP_WORDS), ("c", GO_WORDS)):
+        for w in sorted(table, key=len, reverse=True):
+            if low == w or low.startswith(w + " "):
+                return kind, low[len(w):].strip()
+    return "", ""
+
+
 def by_words(text: str, words: dict, lang: str) -> str | None:
     """"stop" / "continue" typed in the chat, optionally with part of the job's name."""
-    low = text.strip().lower()
-    kind = "s" if any(low.startswith(w) for w in STOP_WORDS) else "c" if any(low.startswith(w) for w in GO_WORDS) else ""
+    kind, rest = command_of(text)
     if not kind:
         return None
-    rest = low.split(None, 1)[1] if len(low.split(None, 1)) > 1 else ""
     jobs = steerable()
     if rest:
         jobs = [j for j in jobs if rest in str(j.get("name", "")).lower()]
@@ -198,10 +240,12 @@ def new_task(text: str, words: dict, lang: str, source: str = "text", audio: Pat
            "state": "waiting", "note": board.short(body)}
     start = cfg.get("start")
     if start and text:
+        # the owner's own command from steer.json, split into words; the folder is one word of it, never shell text
+        argv = [part.replace("{folder}", str(folder)) for part in shlex.split(start)]
         with open(folder / "steer.log", "a", encoding="utf-8") as log:
-            subprocess.Popen(start.replace("{folder}", shlex.quote(str(folder))), shell=True, cwd=str(folder),
-                             stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-        job.update(state="working", resume=start.replace("{folder}", shlex.quote(str(folder))))
+            subprocess.Popen(argv, cwd=str(folder), stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                             start_new_session=True)
+        job.update(state="working")
     board.put(job, words, lang, quiet=True)
     key = "steer_task_started" if job["state"] == "working" else "steer_task_saved"
     return words[key].format(folder=folder)
@@ -282,6 +326,15 @@ class Phone:
                 self.update(json.loads(path.read_text(encoding="utf-8")))
             finally:
                 path.unlink(missing_ok=True)
+        # one poller per bot: while remote.py waits for an approval card it holds this lock and reads the
+        # updates itself (and keeps ours in the spool); getUpdates from two places makes Telegram answer 409
+        with remote.poll_lock(block=False) as mine:
+            if not mine:
+                time.sleep(min(wait, 2))
+                return 0
+            return self._fetch(min(wait, 10))
+
+    def _fetch(self, wait: int) -> int:
         params = {"timeout": wait, "allowed_updates": ["callback_query", "message"]}
         if self.offset is not None:
             params["offset"] = self.offset
@@ -292,14 +345,61 @@ class Phone:
         return len(got)
 
 
-def spool_message(update: dict) -> None:
-    """A message or a Continue/Stop press the approval process read while it waited for its card."""
+def sender(update: dict):
+    src = update.get("message") or update.get("callback_query") or {}
+    return (src.get("from") or {}).get("id")
+
+
+def spool_message(update: dict, allow=None) -> None:
+    """A message or a Continue/Stop press the approval process read while it waited for its card - only the
+    allowlist's, readable by this user only."""
+    if allow is not None and sender(update) not in set(allow):
+        return
     folder = home() / "steer-spool"
     try:
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / f"{int(update.get('update_id', 0)):012d}.json").write_text(json.dumps(update), encoding="utf-8")
+        folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path = folder / f"{int(update.get('update_id', 0)):012d}.json"
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(update, fh)
     except OSError:
         pass
+
+
+def install(dry: bool = False) -> str:
+    """Keep `steer.py listen` alive after the Claude Code session ends: a LaunchAgent on a Mac, a systemd user
+    service on Linux, both restarted if they stop."""
+    script = str(Path(__file__).resolve())
+    env_home = os.environ.get("POCKETCALL_HOME", "")
+    if sys.platform == "darwin":
+        target = Path(os.environ.get("POCKETCALL_AGENT_DIR") or Path.home() / "Library" / "LaunchAgents") / \
+            "ai.polya1.pocketcall.steer.plist"
+        envs = f"<key>EnvironmentVariables</key><dict><key>POCKETCALL_HOME</key><string>{env_home}</string></dict>" \
+            if env_home else ""
+        body = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+                "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\"><dict>"
+                "<key>Label</key><string>ai.polya1.pocketcall.steer</string>"
+                f"<key>ProgramArguments</key><array><string>{sys.executable}</string><string>{script}</string>"
+                "<string>listen</string></array>"
+                f"{envs}<key>RunAtLoad</key><true/><key>KeepAlive</key><true/>"
+                f"<key>StandardErrorPath</key><string>{home() / 'steer-listen.log'}</string>"
+                "</dict></plist>\n")
+        load = ["launchctl", "load", "-w", str(target)]
+    else:
+        target = Path(os.environ.get("POCKETCALL_AGENT_DIR") or Path.home() / ".config" / "systemd" / "user") / \
+            "pocketcall-steer.service"
+        body = ("[Unit]\nDescription=pocketcall: Continue / Stop and voice tasks from the phone\n\n[Service]\n"
+                f"ExecStart={sys.executable} {script} listen\nRestart=always\nRestartSec=10\n"
+                + (f"Environment=POCKETCALL_HOME={env_home}\n" if env_home else "")
+                + "\n[Install]\nWantedBy=default.target\n")
+        load = ["systemctl", "--user", "enable", "--now", "pocketcall-steer.service"]
+    if dry:
+        return body
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(body, encoding="utf-8")
+    if not os.environ.get("POCKETCALL_NO_LOAD"):
+        subprocess.run(load, capture_output=True)
+    return str(target)
 
 
 def main(argv=None) -> int:
@@ -315,6 +415,8 @@ def main(argv=None) -> int:
     p = sub.add_parser("inbox")
     p.add_argument("--to", default="")
     p.add_argument("--start", default=None)
+    p = sub.add_parser("install")
+    p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("transcribe")
     p.add_argument("file")
     args = ap.parse_args(argv)
@@ -325,6 +427,9 @@ def main(argv=None) -> int:
         return 0
     if args.cmd == "continue":
         print(go_on(args.id, words, lang))
+        return 0
+    if args.cmd == "install":
+        print(install(args.dry_run))
         return 0
     if args.cmd == "transcribe":
         text, how = transcribe(Path(args.file))

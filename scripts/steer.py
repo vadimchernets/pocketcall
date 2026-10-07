@@ -98,7 +98,10 @@ def night_loop() -> str:
 def night_argv(job: dict, folder: Path) -> tuple:
     """Continue for a night run, built here from the card's DATA (kind, folder, hours, end, box), with no shell:
     a card is a file other programs can write, so it never carries a command. ([], None) for anything else."""
-    if job.get("kind") != "night" or not (folder / "PLAN.md").is_file():
+    # a night card: kind "night" (nightcall's board call), or the sandbox relay's card - folder, hours, box - with
+    # no kind; either way the folder must hold the night's PLAN.md
+    is_night = job.get("kind") == "night" or (not job.get("kind") and job.get("hours") not in (None, ""))
+    if not is_night or not (folder / "PLAN.md").is_file():
         return [], None
     loop = night_loop()
     if not loop:
@@ -111,9 +114,11 @@ def night_argv(job: dict, folder: Path) -> tuple:
     if end > time.time():                      # Continue goes on to the night's own end, not a fresh full night
         hours = max(1, int((end - time.time() + 3599) // 3600))
     env = dict(os.environ)
-    if job.get("box") is True:
-        env["NIGHTCALL_BOX"] = "1"             # the night was in the box: it goes on in the box
-    return ["bash", loop, str(folder), str(hours)], env
+    argv = ["bash", loop, str(folder), str(hours)]
+    if job.get("box") is True:                 # the night was in the box: it goes on in the box
+        argv.append("--box")
+        env["NIGHTCALL_BOX"] = "1"
+    return argv, env
 
 
 def go_on(job_id: str, words: dict, lang: str) -> str:

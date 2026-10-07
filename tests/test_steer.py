@@ -153,11 +153,17 @@ class TestButtons(SteerCase):
         self.night("failed", kind="night", hours=12, end=time.time() + 2.5 * 3600, box=True)
         self.listen({"update_id": 6, "callback_query": {"id": "q", "from": {"id": 7}, "data": "c:night-1"}})
         said = self.wait_for(self.task / "resumed.txt")
-        self.assertEqual(said.strip(), f"{self.task} 3 box=1")
+        self.assertEqual(said.strip(), f"{self.task} 3 --box box=1")
         self.assertFalse((self.task / "STOP").exists())
         self.assertFalse((self.task / "MORNING.md").exists())
         self.assertEqual(len(list(self.task.glob("MORNING-*.md"))), 1)
         self.assertEqual(board.get("night-1")["state"], "working")
+
+    def test_the_sandbox_relay_s_card_folder_hours_box_goes_on_in_the_box(self):
+        self.fake_loop()
+        self.night("failed", hours=6, box=True)              # no kind, no resume: exactly the relay's fields
+        self.listen({"update_id": 7, "callback_query": {"id": "q", "from": {"id": 7}, "data": "c:night-1"}})
+        self.assertEqual(self.wait_for(self.task / "resumed.txt").strip(), f"{self.task} 6 --box box=1")
 
     def test_an_approval_press_is_left_for_the_card_s_own_process(self):
         self.listen({"update_id": 9, "callback_query": {"id": "q", "from": {"id": 7}, "data": "y:card1"}})

@@ -18,7 +18,7 @@
   of one session at the same moment ring once.
 - After the cold critic: a job card holds data only (`kind`, `folder`, `hours`, `end`, `box`) - Continue builds
   nightcall's argv itself from the loop installed on this computer (`POCKETCALL_NIGHTLOOP` or the newest plugin) and runs
-  it with no shell; a card that says anything else never starts a command. `box: true` goes on with `NIGHTCALL_BOX=1`.
+  it with no shell; a card that says anything else never starts a command. `box: true` goes on in the box (`--box` and `NIGHTCALL_BOX=1`); the sandbox relay's card (`folder`, `hours`, `box`, no kind) is a night card too.
   Messages kept while an approval card waits are the allowlist's only, 0600; one process polls the bot at a time (no 409
   between `remote.py` and `steer.py`); commands are whole words ("stopwatch" is not "stop"); `steer.py install` keeps the
   listener alive after the session (LaunchAgent / systemd user service). Tests: 23 in `tests/test_steer.py`.

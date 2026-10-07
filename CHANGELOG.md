@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.0 — 2026-10-07
+
+- **The board: every job on one screen, the phone rings when one needs you.** New `scripts/board.py` and skill
+  `board`. Five new hooks (UserPromptSubmit, Notification, PostToolUse, Stop, SessionEnd) write each Claude Code session's state
+  to `~/.pocketcall/board/`: working (again as soon as an answered question lets a tool run), waits for you, done, or resting on a limit with the hour it goes on, read from
+  Claude Code's own limit line at the end of the transcript (a model's long answer about limits stays "done"). A
+  night run, a council review or a cron job adds its line with `board.py put`, or writes the job file itself.
+  `board.py run --name <job> -- <command>` puts any long command on the board - working while it runs, done or
+  stopped with its last line and exit code when it ends (a diffcall fix with `--wait`, a test suite, a deploy).
+- **Rings on what changed**: once per change into waits / done / limit / stopped, one line to the Telegram chat of
+  `remote.py telegram` and to the person's own ntfy topic (`board.py ring --ntfy <url>`); `--when away` (the
+  default) rings while `remote.py away` says the person is out, `always` at the desk too, `never` keeps only the
+  board. A permission question that already goes to the phone as an approval card does not ring twice.
+  `put --ring` rings at the desk too (a night run). A hook's ring goes from a process of its own, so a session never
+  waits for the network; a limit is read only from Claude Code's own error line, never from a model's words.
+- **The board on the phone with no server**: `board.py page --to <shared folder>` writes `pocketcall-board.html`
+  (plain HTML, no script, light and dark, refreshing every minute) into the folder the phone already sees, and
+  rewrites it at every change. In all five languages. `tests/test_board.py`.
+
 ## 0.3.3 — 2026-10-03
 
 - **Voice → task → pull request → Yes from the phone.** New `scripts/task.py` and skill `task`. A voice note

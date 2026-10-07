@@ -11,7 +11,7 @@ discipline of answering someone who is reading four lines on a phone in a corrid
 
 Pocketcall is an independent open-source project. Not affiliated with Anthropic.
 
-**Status: v0.3.3.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
+**Status: v0.4.0.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
 teacher, a realtor, a bookkeeper — with a paid personal subscription, no API keys, no server, and
 no intention of acquiring either; and, since 0.3, for the same people on a work account, where
 the company decides what is allowed (see [At work](#at-work-four-branches)). It speaks English,
@@ -66,6 +66,7 @@ it and deletes their saved data.
 | `leave` | the first time, and any time it matters: six steps ending with one real message answered from the phone, then the thirty seconds at the door you repeat every evening |
 | `remote` | branch D: pair with the company's relay and messenger; while you are away every permission question arrives on the phone as an approval card with Yes, No and Show the diff |
 | `task` | a voice note becomes a task in the company's tracker, a cloud or home session opens its pull request, and the phone gets that pull request's card: every file, the diff, Yes / No / Show the diff |
+| `board` | every job on one screen - each Claude Code session, a night run, a review: working, waits for you, done, resting on a limit until a given hour - and the phone rings on what changed for you, through Telegram or your own ntfy topic; the board is also one phone page in your shared folder |
 | `handover` | standing guidance for the whole time you are away: short answers, finished work in a file |
 
 You can also run the check by hand, without the plugin:
@@ -264,6 +265,31 @@ python3 scripts/task.py watch --start cloud                         # the desk: 
   Neither needs the laptop. A cloud session that pushed its branch without opening a pull request
   gets one from the desk.
 
+## The board: every job on one screen, the phone rings when one needs you
+
+Fifteen terminals open and no idea which one waits for you: the board answers that on the computer
+and on the phone. The plugin's hooks write each Claude Code session's state by themselves -
+**Working** when a message goes in, **Waits for you** on a question or a permission, **Done** when
+the turn ends, **Resting on a limit until 18:00** when Claude Code's own limit line ended it. A night
+run, a council review or a cron job adds its own line:
+
+```
+python3 scripts/board.py show                                   # the waiting job first
+python3 scripts/board.py put --name "night run" --where nightcall --state limit --until 03:10
+python3 scripts/board.py ring --ntfy https://ntfy.sh/<your topic> --test   # the phone rings
+python3 scripts/board.py ring --when always                     # away (default) | always | never
+python3 scripts/board.py page --to ~/Google\ Drive/phone        # the board as one phone page
+python3 scripts/board.py run --name "shop tests" -- npm test    # any long command: working, then done or stopped
+```
+
+The rings go where the phone already is - the Telegram chat set with `remote.py telegram` and the
+person's own ntfy topic - once per change of state, one line each: the state, the job, its folder, a
+few words of what it said. A permission question that goes to the phone as an approval card does not
+ring twice. The page is plain HTML with no script, light and dark, refreshing itself every minute,
+rewritten at every change into the Google Drive / iCloud / Dropbox / OneDrive folder the phone
+already sees: the board on the phone with no server at all. Any tool can also write its job file
+into `~/.pocketcall/board/` itself (the keys are in `scripts/board.py`). Standard library only.
+
 ## What is true about an evening away
 
 - **The work runs while the computer is awake.** Keep it awake and the evening works. If it
@@ -301,7 +327,8 @@ English; `python3 scripts/check_language.py` keeps Cyrillic inside `lang/`.
 ## Tests
 
 `tests/test_remote.py` runs a relay on a local port, a stand-in Telegram, and the phone's sealing
-code in Node, and proves a card goes through sealed and comes back as Yes or No. `tests/test_task.py`
+code in Node, and proves a card goes through sealed and comes back as Yes or No. `tests/test_board.py` walks a session through
+the board's states with a stand-in Telegram and ntfy. `tests/test_task.py`
 runs the whole way from a voice note to a merge with a stand-in GitHub CLI and a stand-in Claude Code
 that, like the real one, creates a cloud session only in a terminal, a routine's API trigger, a webhook
 server, a bare repository as the far side of git, the relay, and two computers on one phone.

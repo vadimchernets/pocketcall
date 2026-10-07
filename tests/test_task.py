@@ -946,7 +946,7 @@ class TestTheWords(unittest.TestCase):
 
     def test_the_readme_the_changelog_and_the_manifests_name_this_version(self):
         version = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
-        self.assertEqual(version, "0.3.3")
+        self.assertEqual(version, "0.4.0")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("**Status: v%s.**" % version, readme)
         self.assertIn("## %s " % version, (ROOT / "CHANGELOG.md").read_text(encoding="utf-8"))

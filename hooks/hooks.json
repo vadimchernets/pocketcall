@@ -1,5 +1,5 @@
 {
-  "description": "pocketcall's hook. When Claude Code is about to ask for permission and this computer is paired (scripts/remote.py) and marked away, the approval card goes to the phone - the company relay's page and the company's messenger - with Yes, No and Show the diff; the first answer decides. At the desk or not paired it prints nothing and the ordinary dialog appears. It goes through the step 0 guard and stays quiet without Python.",
+  "description": "pocketcall's hook. When Claude Code is about to ask for permission and this computer is paired (scripts/remote.py) and marked away, the approval card goes to the phone - the company relay's page and the company's messenger - with Yes, No and Show the diff; the first answer decides. At the desk or not paired it prints nothing and the ordinary dialog appears. It goes through the step 0 guard and stays quiet without Python. The board hooks (UserPromptSubmit, Notification, PostToolUse, Stop, SessionEnd) write each session's state - working, waits for you, done, resting on a limit until a given hour - to ~/.pocketcall/board (scripts/board.py) and ring the phone on what changed for the person; they print nothing and never stop the session.",
   "hooks": {
     "PermissionRequest": [
       {
@@ -9,6 +9,62 @@
             "type": "command",
             "command": "exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/python.sh\" pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/approve_hook.py\"\ntrap { continue }; & ([scriptblock]::Create((Get-Content -Raw -LiteralPath \"${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1\"))) pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/approve_hook.py\"",
             "timeout": 900
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/python.sh\" pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook\ntrap { continue }; & ([scriptblock]::Create((Get-Content -Raw -LiteralPath \"${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1\"))) pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/python.sh\" pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook\ntrap { continue }; & ([scriptblock]::Create((Get-Content -Raw -LiteralPath \"${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1\"))) pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/python.sh\" pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook\ntrap { continue }; & ([scriptblock]::Create((Get-Content -Raw -LiteralPath \"${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1\"))) pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/python.sh\" pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook\ntrap { continue }; & ([scriptblock]::Create((Get-Content -Raw -LiteralPath \"${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1\"))) pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/python.sh\" pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook\ntrap { continue }; & ([scriptblock]::Create((Get-Content -Raw -LiteralPath \"${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1\"))) pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook",
+            "timeout": 20
           }
         ]
       }

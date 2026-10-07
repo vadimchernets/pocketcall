@@ -11,7 +11,7 @@ discipline of answering someone who is reading four lines on a phone in a corrid
 
 Pocketcall is an independent open-source project. Not affiliated with Anthropic.
 
-**Status: v0.4.0.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
+**Status: v0.5.0.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
 teacher, a realtor, a bookkeeper — with a paid personal subscription, no API keys, no server, and
 no intention of acquiring either; and, since 0.3, for the same people on a work account, where
 the company decides what is allowed (see [At work](#at-work-four-branches)). It speaks English,
@@ -290,6 +290,18 @@ rewritten at every change into the Google Drive / iCloud / Dropbox / OneDrive fo
 already sees: the board on the phone with no server at all. Any tool can also write its job file
 into `~/.pocketcall/board/` itself (the keys are in `scripts/board.py`). Standard library only.
 
+## Continue, Stop and a voice task from the phone
+
+The board's ring for a night run or a long build comes with **Continue** and **Stop** buttons in Telegram; "stop" or
+"continue" typed works too. A voice note to the same bot is transcribed on the computer and becomes `TASK.md` in a
+new folder of the inbox (with `--start`, it begins at once). The meter of subscriptions ("Claude rests until 21:00
+· Codex 72% · Gemini ?", from nightcall's "my subscriptions") shows as bars on the phone page.
+
+```
+python3 scripts/steer.py inbox --to ~/Tasks --start 'bash ~/nightcall/scripts/night-loop.sh {folder} 8'
+python3 scripts/steer.py listen        # on the computer that stays on
+```
+
 ## What is true about an evening away
 
 - **The work runs while the computer is awake.** Keep it awake and the evening works. If it
@@ -328,7 +340,7 @@ English; `python3 scripts/check_language.py` keeps Cyrillic inside `lang/`.
 
 `tests/test_remote.py` runs a relay on a local port, a stand-in Telegram, and the phone's sealing
 code in Node, and proves a card goes through sealed and comes back as Yes or No. `tests/test_board.py` walks a session through
-the board's states with a stand-in Telegram and ntfy. `tests/test_task.py`
+the board's states with a stand-in Telegram and ntfy; `tests/test_steer.py` presses Continue and Stop, types "stop" and sends a voice note to a stand-in Telegram. `tests/test_task.py`
 runs the whole way from a voice note to a merge with a stand-in GitHub CLI and a stand-in Claude Code
 that, like the real one, creates a cloud session only in a terminal, a routine's API trigger, a webhook
 server, a bare repository as the far side of git, the relay, and two computers on one phone.

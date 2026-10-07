@@ -242,5 +242,22 @@
   "board_when_never": "не звонят никогда; табло и его страница обновляются",
   "board_cleared": "Готовые задачи убраны с табло.",
   "board_exit": "завершилась с кодом {code}: {line}",
-  "board_run_needs": "Команду пишите после --, например: board.py run --name тесты -- npm test"
+  "board_run_needs": "Команду пишите после --, например: board.py run --name тесты -- npm test",
+
+  "steer_continue": "Продолжай",
+  "steer_stop": "Стоп",
+  "steer_stopped": "{job}: стоп отправлен — работа закончится после текущего шага.",
+  "steer_goes_on": "{job} — работа идёт дальше.",
+  "steer_resumed": "{job} снова работает.",
+  "steer_resumed_note": "продолжено с телефона",
+  "steer_no_folder": "У {job} нет папки задачи: «Продолжай» и «Стоп» — для ночных и долгих сборок.",
+  "steer_which": "Какую? Напишите слово и часть имени: {names}",
+  "steer_task_no_text": "(голосовая заметка: voice.oga рядом с этим файлом)",
+  "steer_task_done_when": "Признаки «готово» Claude выпишет из текста выше на старте (/nightcall:start).",
+  "steer_task_saved": "Задача сохранена: {folder}. За компьютером: /nightcall:start в этой папке — или steer.py inbox --start, чтобы начинать сразу.",
+  "steer_task_started": "Задача сохранена и запущена: {folder}. Ход — на табло.",
+  "steer_no_transcriber": "На компьютере пока нет распознавания речи: pip install mlx-whisper (Mac) или openai-whisper, или OPENAI_API_KEY / GROQ_API_KEY в окружении. А пока напишите задачу текстом: тз: ...",
+  "steer_no_telegram": "Сначала Telegram телефона: remote.py telegram --token <токен бота> --allow <ваш id в Telegram>.",
+  "steer_listening": "Слушаю телефон: «Продолжай» / «Стоп», голосовые и «тз: ...».",
+  "steer_inbox_set": "Задачи с телефона попадают в {folder}; запуск сразу: {start}"
 }

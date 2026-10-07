@@ -219,7 +219,8 @@ class Telegram:
                 self.press(ask_id, kind)
         if ask_id in self.said:
             return self.said.pop(ask_id)
-        params = {"timeout": int(wait), "allowed_updates": ["callback_query"]}
+        # messages too: a voice note or "stop" sent while a card waits is kept for steer.py, not lost
+        params = {"timeout": int(wait), "allowed_updates": ["callback_query", "message"]}
         if self.offset is not None:
             params["offset"] = self.offset
         for update in self.call("getUpdates", **params) or []:
@@ -227,6 +228,10 @@ class Telegram:
             q = update.get("callback_query") or {}
             who = (q.get("from") or {}).get("id")
             kind, _, qid = str(q.get("data", "")).partition(":")
+            if update.get("message") or kind in ("c", "s"):
+                import steer  # noqa: PLC0415 - steer imports this module
+                steer.spool_message(update)
+                continue
             if kind not in PRESSES or not ID.match(qid):
                 continue
             self.call("answerCallbackQuery", callback_query_id=q.get("id"))

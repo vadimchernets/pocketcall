@@ -242,5 +242,22 @@
   "board_when_never": "nunca tocam; o quadro e a página continuam em dia",
   "board_cleared": "Os trabalhos terminados saíram do quadro.",
   "board_exit": "terminou com o código {code}: {line}",
-  "board_run_needs": "Escreva o comando depois de --, por exemplo: board.py run --name testes -- npm test"
+  "board_run_needs": "Escreva o comando depois de --, por exemplo: board.py run --name testes -- npm test",
+
+  "steer_continue": "Continua",
+  "steer_stop": "Pare",
+  "steer_stopped": "{job}: parada enviada, termina depois do passo atual.",
+  "steer_goes_on": "{job} continua.",
+  "steer_resumed": "{job} voltou a trabalhar.",
+  "steer_resumed_note": "continuado pelo telefone",
+  "steer_no_folder": "{job} não tem pasta de tarefa: Continua e Pare são para trabalhos noturnos e longos.",
+  "steer_which": "Qual? Escreva a palavra e parte do nome: {names}",
+  "steer_task_no_text": "(nota de voz: voice.oga ao lado deste arquivo)",
+  "steer_task_done_when": "O Claude escreve os critérios a partir do texto ao começar (/nightcall:start).",
+  "steer_task_saved": "Tarefa salva: {folder}. No computador: /nightcall:start nessa pasta, ou steer.py inbox --start para começar na hora.",
+  "steer_task_started": "Tarefa salva e iniciada: {folder}. O quadro mostra o andamento.",
+  "steer_no_transcriber": "Ainda não há transcritor neste computador: pip install mlx-whisper (Mac) ou openai-whisper, ou OPENAI_API_KEY / GROQ_API_KEY no ambiente. Enquanto isso, escreva a tarefa: tarefa: ...",
+  "steer_no_telegram": "Primeiro o Telegram do telefone: remote.py telegram --token <token do bot> --allow <seu id do Telegram>.",
+  "steer_listening": "Ouvindo o telefone: Continua / Pare, notas de voz e \"tarefa: ...\".",
+  "steer_inbox_set": "As tarefas do telefone chegam em {folder}; iniciadas com: {start}"
 }

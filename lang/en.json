@@ -245,5 +245,22 @@
   "board_when_never": "they never ring, the board and its page stay up to date",
   "board_cleared": "Finished jobs are off the board.",
   "board_exit": "ended with code {code}: {line}",
-  "board_run_needs": "Give the command after --, for example: board.py run --name tests -- npm test"
+  "board_run_needs": "Give the command after --, for example: board.py run --name tests -- npm test",
+
+  "steer_continue": "Continue",
+  "steer_stop": "Stop",
+  "steer_stopped": "Stop sent to {job}: it ends after the step it is on.",
+  "steer_goes_on": "{job} goes on.",
+  "steer_resumed": "{job} is working again.",
+  "steer_resumed_note": "continued from the phone",
+  "steer_no_folder": "{job} has no task folder to steer: Continue and Stop work for night runs and long builds.",
+  "steer_which": "Which one? Write the word and part of the name: {names}",
+  "steer_task_no_text": "(a voice note: voice.oga next to this file)",
+  "steer_task_done_when": "Claude writes the criteria from the text above when the work starts (/nightcall:start).",
+  "steer_task_saved": "Task saved: {folder}. At the computer: /nightcall:start in that folder - or set steer.py inbox --start to begin at once.",
+  "steer_task_started": "Task saved and started: {folder}. The board shows how it goes.",
+  "steer_no_transcriber": "No transcriber on this computer yet: pip install mlx-whisper (Mac) or openai-whisper, or put OPENAI_API_KEY / GROQ_API_KEY in the environment. Meanwhile type the task: task: ...",
+  "steer_no_telegram": "Set the phone's Telegram first: remote.py telegram --token <bot token> --allow <your Telegram id>.",
+  "steer_listening": "Listening to the phone: Continue / Stop, \"stop\", \"continue\", voice notes and \"task: ...\".",
+  "steer_inbox_set": "Tasks from the phone land in {folder}; started at once with: {start}"
 }

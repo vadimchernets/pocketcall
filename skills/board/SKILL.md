@@ -1,7 +1,7 @@
 ---
 name: board
-description: The board - every job on this computer on one screen, on the computer and on the phone. Each Claude Code session reports itself (working, waits for you, done, resting on a limit until a given hour), a night run, a council review or any script adds its own line, and the phone rings only on what changed for the person - a job waits for an answer, a job is done, a job rests on a limit and when it goes on - through the Telegram chat already set for the remote and the person's own ntfy topic. The board is also one phone page written into the shared folder the phone already sees, with no server at all. Use when the person asks what is running, what waits for them, which session is stuck or done, wants a ping on the phone when a long job finishes, or keeps many sessions open at once.
-allowed-tools: Bash(sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/board.py *) PowerShell(${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1 pocketcall say scripts/board.py *)
+description: The board - every job on this computer on one screen, on the computer and on the phone. Each Claude Code session reports itself (working, waits for you, done, resting on a limit until a given hour), a night run, a council review or any script adds its own line, and the phone rings only on what changed for the person - a job waits for an answer, a job is done, a job rests on a limit and when it goes on - through the Telegram chat already set for the remote and the person's own ntfy topic. The board is also one phone page written into the shared folder the phone already sees, with no server at all. Use when the person asks what is running, what waits for them, which session is stuck or done, wants a ping on the phone when a long job finishes, or keeps many sessions open at once. Also steers long work from the phone - Continue and Stop buttons under the ring, "stop" / "continue" typed, a voice note that becomes TASK.md - use when the person says "stop the night from the phone", "continue", "voice task", "dictate the task".
+allowed-tools: Bash(sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/board.py *) PowerShell(${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1 pocketcall say scripts/board.py *) Bash(sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/steer.py *) PowerShell(${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1 pocketcall say scripts/steer.py *)
 ---
 
 # The board - every job on one screen, the phone rings when one needs you
@@ -80,3 +80,23 @@ The same name is the same line. A tool that has no Python can write the job file
 
 `clear` takes the finished jobs off the board, `clear --all` empties it; a finished job leaves by
 itself after three days, a closed session at once.
+
+## Steer long work from the phone: Continue, Stop, a voice task
+
+A job with a task folder - a nightcall night or a long build (nightcall 0.5.0 puts its folder and its own
+command on the board) - rings with two buttons in Telegram: **Continue** and **Stop**. Stop leaves a STOP file
+in the folder, and the night loop ends after the step it is on; Continue takes the STOP away, and a night that
+already ended goes on with its own command (the earlier MORNING.md is kept under a dated name). Typing "stop" or
+"continue" (in any of the five languages, with part of the name when several run) does the same.
+
+A voice note in the same chat becomes the next task: it is transcribed on this computer (mlx-whisper, whisper,
+whisper.cpp, or the person's own OPENAI_API_KEY / GROQ_API_KEY), and lands as `TASK.md` in a new folder of the
+inbox; `task: ...` typed does the same. With `--start` the task begins at once - for example a night through
+nightcall's loop. The listener runs on the computer that stays on (start it with the Bash tool's background run):
+
+    sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/steer.py inbox --to "<folder for tasks from the phone>" --start "<command with {folder}>"
+    sh "${CLAUDE_PLUGIN_ROOT}/hooks/python.sh" pocketcall say scripts/steer.py listen
+
+At the desk the same: `steer.py stop --id <job>` / `steer.py continue --id <job>` (the id is in `board.py show --json`).
+Only the Telegram ids on the allowlist of `remote.py telegram` steer. A job with `--meter` shows how much each
+subscription has left - as bars on the phone page, in brackets in the ring.

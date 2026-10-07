@@ -1,7 +1,7 @@
 {
   "name": "pocketcall",
   "description": "Make the remote you already pay for usable by a person who is not a programmer: check the seven things that silently decide whether a machine can be left working, including the shared folder a photo from town lands in, walk through the four minutes before you leave the house and the thirty seconds at the door, and answer like someone is reading on a phone. On a work account it picks the branch that fits the company: the built-in remote once an Owner turns it on, a cloud session that keeps running while the laptop sleeps, SSH and tmux over Tailscale, or the company's own one-command relay that brings every permission question to the phone as an end-to-end encrypted approval card - full command, files, Yes / No / Show the diff - with a push, and to the company's Telegram, on Bedrock, Google Cloud, a gateway, ZDR or HIPAA too. A voice note becomes a task in the company's tracker (GitHub Issues or a webhook), a cloud or home session opens its pull request, and the phone approves that pull request on the same card - Yes merges exactly the commit the card showed - while the laptop sleeps. The board puts every job on one screen - each Claude Code session, a night run, a review: working, waits for you, done, resting on a limit until a given hour - and rings the phone on what changed, through Telegram or the person's own ntfy topic, with the board as one phone page in the shared folder. Speaks English, Spanish, Portuguese, Russian and Ukrainian. Pocketcall asks for no API key and never for a Claude sign-in.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "author": {
     "name": "Vadym Chernets"
   },

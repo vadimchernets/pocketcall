@@ -20,6 +20,10 @@ you: a job waits for an answer, a job is done, a job rests on a limit (with the 
                                             any long command on the board: working while it runs, done or
                                             stopped (with its last line) when it ends - a diffcall fix with
                                             --wait, a test suite, a build, a deploy
+    board.py put ... [--folder <task folder>] [--resume <command>] [--meter "<Claude 44% · Codex 100%>"] [--say]
+                                            a job with a folder gets Stop and Continue buttons on the phone
+                                            (steer.py); --meter shows how much each subscription has left;
+                                            --say rings this line now (a change of hands, say)
     board.py clear [--all]                  drop finished jobs (all jobs with --all)
     board.py hook                           the plugin's hook (UserPromptSubmit, Notification, PostToolUse,
                                             Stop, SessionEnd): Claude Code sessions report themselves
@@ -168,7 +172,26 @@ def line_of(job: dict, words: dict, now: float | None = None) -> str:
     text = f"{state} - {job.get('name') or job.get('id')}{where}, {ago(now - float(job.get('at') or now), words)}"
     if job.get("note"):
         text += f": {job['note']}"
+    if job.get("meter"):
+        text += f" [{job['meter']}]"
     return text
+
+
+METER = re.compile(r"([^·%?]+?)\s+(\d{1,3})%")
+
+
+def meter_html(meter: str) -> str:
+    """The subscriptions' remaining % as bars; a part without a number stays as words."""
+    esc = html.escape
+    out = []
+    for part in [p.strip() for p in str(meter or "").split("·") if p.strip()]:
+        m = METER.fullmatch(part)
+        if m:
+            pct = max(0, min(100, int(m.group(2))))
+            out.append(f'<span class="bar"><i style="width:{pct}%"></i><em>{esc(m.group(1).strip())} {pct}%</em></span>')
+        else:
+            out.append(f'<span class="bar off"><em>{esc(part)}</em></span>')
+    return '<span class="meter">' + "".join(out) + "</span>" if out else ""
 
 
 def show(words: dict, as_json: bool = False) -> str:
@@ -197,6 +220,7 @@ def page_html(words: dict, lang: str, now: float | None = None) -> str:
             + (f'<span class="where">{esc(str(where))}</span>' if where else "")
             + f'<span class="ago">{esc(ago(now - float(job.get("at") or now), words))}</span>'
             + (f'<span class="note">{esc(str(job["note"]))}</span>' if job.get("note") else "")
+            + meter_html(job.get("meter"))
             + "</li>")
     body = "<ul>" + "".join(rows) + "</ul>" if rows else f'<p class="empty">{esc(words["board_empty"])}</p>'
     stamp = time.strftime("%H:%M", time.localtime(now))
@@ -220,6 +244,10 @@ li b{{color:var(--c);width:100%}} .name{{font-weight:600}} .where,.ago{{color:va
 .note{{width:100%;color:var(--mute);font-size:14px;overflow-wrap:anywhere}}
 .waiting{{--c:var(--waiting)}} .limit{{--c:var(--limit)}} .failed{{--c:var(--failed)}}
 .working{{--c:var(--working)}} .done{{--c:var(--done)}} .empty{{color:var(--mute)}}
+.meter{{width:100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}}
+.bar{{position:relative;flex:1 1 120px;height:22px;border:1px solid var(--line);border-radius:6px;overflow:hidden}}
+.bar i{{position:absolute;inset:0 auto 0 0;background:var(--working);opacity:.25}}
+.bar em{{position:relative;font-style:normal;font-size:13px;padding:0 6px;line-height:22px}} .bar.off em{{color:var(--mute)}}
 </style></head><body><main>
 <h1>{esc(words["board_title"])}</h1>
 <p class="stamp">{esc(words["board_page_stamp"].format(time=stamp))}</p>
@@ -264,16 +292,21 @@ def ring_later(text: str) -> None:
         pass
 
 
-def ring(text: str, cfg: dict, timeout: float = 5) -> list:
+def ring(text: str, cfg: dict, timeout: float = 5, keys: str = "", words: dict | None = None) -> list:
     """One line to the phone, everywhere it is set: the Telegram chat of remote.py and the ntfy
-    topic of this board. Returns the names of the places that took it."""
+    topic of this board. A job with a task folder (keys = its id) comes with Continue and Stop
+    buttons in Telegram (steer.py takes the press). Returns the names of the places that took it."""
     took = []
     tg = (remote.load().get("telegram") or {})
     if tg.get("token") and (tg.get("chat") or tg.get("allow")):
         api = (os.environ.get("POCKETCALL_TELEGRAM_API") or "https://api.telegram.org").rstrip("/")
+        msg = {"chat_id": tg.get("chat") or tg["allow"][0], "text": text}
+        if keys and words:
+            msg["reply_markup"] = {"inline_keyboard": [[
+                {"text": words["steer_continue"], "callback_data": f"c:{keys}"[:64]},
+                {"text": words["steer_stop"], "callback_data": f"s:{keys}"[:64]}]]}
         try:
-            remote._http(f"{api}/bot{tg['token']}/sendMessage",
-                         {"chat_id": tg.get("chat") or tg["allow"][0], "text": text}, timeout)
+            remote._http(f"{api}/bot{tg['token']}/sendMessage", msg, timeout)
             took.append("telegram")
         except Exception:  # noqa: BLE001 - a ring never breaks anything
             pass
@@ -290,7 +323,7 @@ def ring(text: str, cfg: dict, timeout: float = 5) -> list:
 
 
 def put(job: dict, words: dict, lang: str, now: float | None = None, quiet: bool = False,
-        force: bool = False, later: bool = False) -> dict:
+        force: bool = False, later: bool = False, say: bool = False) -> dict:
     """Write one job; ring when its state changed into one that is news for the person, and
     rewrite the phone page. Returns the job as written, with "rang" naming where it rang."""
     now = time.time() if now is None else now
@@ -300,16 +333,20 @@ def put(job: dict, words: dict, lang: str, now: float | None = None, quiet: bool
     job["task"] = short(job.get("task"))
     job["at"] = now
     before = get(job["id"])
+    job["meter"] = short(job.get("meter"))
     _write(folder() / f"{job['id']}.json", {k: job.get(k, "") for k in
-                                              ("id", "name", "where", "state", "note", "until", "at", "task")})
+                                              ("id", "name", "where", "state", "note", "until", "at", "task",
+                                               "folder", "resume", "meter")})
     cfg = load_settings()
     rang = []
-    if not quiet and job["state"] in RINGS and before.get("state") != job["state"] and should_ring(cfg, force):
+    changed = job["state"] in RINGS and before.get("state") != job["state"]
+    if not quiet and (changed or say) and should_ring(cfg, force or say):
+        keys = job["id"] if job.get("folder") else ""
         if later:
             ring_later(line_of(job, words, now))
             rang = ["later"]
         else:
-            rang = ring(line_of(job, words, now), cfg)
+            rang = ring(line_of(job, words, now), cfg, keys=keys, words=words)
     write_page(cfg, words, lang)
     job["rang"] = rang
     return job
@@ -467,6 +504,10 @@ def main(argv=None) -> int:
     p.add_argument("--where", default="")
     p.add_argument("--id", default="")
     p.add_argument("--ring", action="store_true", help="ring on a change even at the desk (not with --when never)")
+    p.add_argument("--folder", default="", help="the job's task folder: Stop and Continue from the phone")
+    p.add_argument("--resume", default="", help="the command that goes on with the job (Continue)")
+    p.add_argument("--meter", default="", help="how much each subscription has left, one line")
+    p.add_argument("--say", action="store_true", help="ring this line now, even with no change of state")
     rl = sub.add_parser("ring-line")
     rl.add_argument("text")
     g = sub.add_parser("page")
@@ -510,7 +551,8 @@ def main(argv=None) -> int:
         return 0
     if args.cmd == "put":
         job = put({"id": args.id or args.name, "name": args.name, "where": args.where,
-                   "state": args.state, "note": args.note, "until": args.until}, words, lang, force=args.ring)
+                   "state": args.state, "note": args.note, "until": args.until, "folder": args.folder,
+                   "resume": args.resume, "meter": args.meter}, words, lang, force=args.ring, say=args.say)
         print(line_of(job, words))
         if job["rang"]:
             print(words["board_rang"].format(where=", ".join(job["rang"])))

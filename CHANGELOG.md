@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0 — 2026-10-07
+
+- **Steer long work from the phone.** New `scripts/steer.py`: a board ring for a job with a task folder carries
+  Continue and Stop buttons in Telegram; Stop leaves a STOP file (the night loop ends after the current step), Continue
+  removes it and starts an ended job again with its own command. "stop" / "continue" typed in five languages, with part
+  of the name when several jobs run. Only the allowlist of `remote.py telegram` steers.
+- **Voice task.** A voice note to the bot is transcribed on the computer (POCKETCALL_TRANSCRIBE, mlx-whisper, whisper,
+  whisper.cpp, or the person's own OpenAI / Groq key) and becomes `TASK.md` in a new inbox folder; `task: ...` typed
+  too; `steer.py inbox --start` begins it at once. With no transcriber the audio is kept and the phone is told how.
+- The board: `put --folder --resume --meter --say`; the meter of subscriptions as bars on the phone page; a change of
+  hands rings with `--say`. `remote.py`'s approval wait now also takes messages and keeps them for `steer.py`, so a voice
+  note sent while a card waits is not lost. Tests: `tests/test_steer.py` (13).
+
 ## 0.4.0 — 2026-10-07
 
 - **The board: every job on one screen, the phone rings when one needs you.** New `scripts/board.py` and skill

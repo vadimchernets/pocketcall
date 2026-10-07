@@ -259,5 +259,6 @@
   "steer_no_transcriber": "На компьютере пока нет распознавания речи: pip install mlx-whisper (Mac) или openai-whisper, или OPENAI_API_KEY / GROQ_API_KEY в окружении. А пока напишите задачу текстом: тз: ...",
   "steer_no_telegram": "Сначала Telegram телефона: remote.py telegram --token <токен бота> --allow <ваш id в Telegram>.",
   "steer_listening": "Слушаю телефон: «Продолжай» / «Стоп», голосовые и «тз: ...».",
-  "steer_inbox_set": "Задачи с телефона попадают в {folder}; запуск сразу: {start}"
+  "steer_inbox_set": "Задачи с телефона попадают в {folder}; запуск сразу: {start}",
+  "board_api_error": "ход оборвался на ошибке ({kind})"
 }

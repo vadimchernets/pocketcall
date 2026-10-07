@@ -11,7 +11,11 @@
   too; `steer.py inbox --start` begins it at once. With no transcriber the audio is kept and the phone is told how.
 - The board: `put --folder --resume --meter --say`; the meter of subscriptions as bars on the phone page; a change of
   hands rings with `--say`. `remote.py`'s approval wait now also takes messages and keeps them for `steer.py`, so a voice
-  note sent while a card waits is not lost. Tests: `tests/test_steer.py` (13).
+  note sent while a card waits is not lost. Tests: `tests/test_steer.py` (16).
+- The board, the leftovers of 0.4.0's critic: the `StopFailure` hook (Claude Code's event for a turn ended by an API
+  error, listed in the hooks reference) - a spent limit shows "resting until" with its hour, any other error shows
+  "stopped" instead of "working" until the next prompt; and one lock per job around the read-compare-write, so two hooks
+  of one session at the same moment ring once.
 
 ## 0.4.0 — 2026-10-07
 

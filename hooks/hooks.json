@@ -68,6 +68,17 @@
           }
         ]
       }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/python.sh\" pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook\ntrap { continue }; & ([scriptblock]::Create((Get-Content -Raw -LiteralPath \"${CLAUDE_PLUGIN_ROOT}/hooks/python.ps1\"))) pocketcall quiet \"${CLAUDE_PLUGIN_ROOT}/scripts/board.py\" hook",
+            "timeout": 20
+          }
+        ]
+      }
     ]
   }
 }

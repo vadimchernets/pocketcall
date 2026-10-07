@@ -259,5 +259,6 @@
   "steer_no_transcriber": "Ainda não há transcritor neste computador: pip install mlx-whisper (Mac) ou openai-whisper, ou OPENAI_API_KEY / GROQ_API_KEY no ambiente. Enquanto isso, escreva a tarefa: tarefa: ...",
   "steer_no_telegram": "Primeiro o Telegram do telefone: remote.py telegram --token <token do bot> --allow <seu id do Telegram>.",
   "steer_listening": "Ouvindo o telefone: Continua / Pare, notas de voz e \"tarefa: ...\".",
-  "steer_inbox_set": "As tarefas do telefone chegam em {folder}; iniciadas com: {start}"
+  "steer_inbox_set": "As tarefas do telefone chegam em {folder}; iniciadas com: {start}",
+  "board_api_error": "o turno terminou com um erro ({kind})"
 }

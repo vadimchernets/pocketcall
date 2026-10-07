@@ -209,6 +209,38 @@ class TestWords(SteerCase):
         self.assertTrue((self.task / "STOP").exists())
 
 
+class TestStopFailureAndLock(SteerCase):
+    def hook(self, event, **fields):
+        data = {"hook_event_name": event, "session_id": "s-9", "cwd": "/work/shop"}
+        data.update(fields)
+        with mock.patch("sys.stdin", io.StringIO(json.dumps(data))):
+            with redirect_stdout(io.StringIO()):
+                board.main(["hook"])
+        return board.get("claude-s-9")
+
+    def test_a_turn_ended_by_the_limit_rests_with_its_hour(self):
+        self.hook("UserPromptSubmit", prompt="sort the mail")
+        job = self.hook("StopFailure", error_type="rate_limit", error_message="You've hit your limit - resets 3am")
+        self.assertEqual((job["state"], job["until"]), ("limit", "3am"))
+
+    def test_another_api_error_is_stopped_not_working_forever(self):
+        self.hook("UserPromptSubmit", prompt="sort the mail")
+        job = self.hook("StopFailure", error_type="server_error")
+        self.assertEqual(job["state"], "failed")
+        self.assertIn("server_error", job["note"])
+
+    def test_two_hooks_at_once_ring_once(self):
+        board.put({"id": "j", "name": "j", "state": "working"}, WORDS, "en")
+        n = len(Telegram.sent)
+        threads = [threading.Thread(target=board.put, args=({"id": "j", "name": "j", "state": "done"}, WORDS, "en"))
+                   for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(len(Telegram.sent) - n, 1)
+
+
 class TestMeter(SteerCase):
     def test_the_phone_page_shows_the_meter_as_bars(self):
         self.night()

@@ -40,6 +40,7 @@ The board lives in ~/.pocketcall/board/ (POCKETCALL_HOME moves it), readable by 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import html
 import json
 import os
@@ -51,6 +52,11 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+
+try:
+    import fcntl
+except ImportError:          # Windows: os.replace keeps each write whole; the lock is the POSIX extra
+    fcntl = None
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -332,11 +338,14 @@ def put(job: dict, words: dict, lang: str, now: float | None = None, quiet: bool
     job["note"] = short(job.get("note"))
     job["task"] = short(job.get("task"))
     job["at"] = now
-    before = get(job["id"])
     job["meter"] = short(job.get("meter"))
-    _write(folder() / f"{job['id']}.json", {k: job.get(k, "") for k in
-                                              ("id", "name", "where", "state", "note", "until", "at", "task",
-                                               "folder", "resume", "meter")})
+    # two hooks of one session at the same moment (Stop and Notification, say) both read the old state and
+    # both would ring: the read and the write of one job go under one lock, so only the first sees a change
+    with job_lock(job["id"]):
+        before = get(job["id"])
+        _write(folder() / f"{job['id']}.json", {k: job.get(k, "") for k in
+                                                  ("id", "name", "where", "state", "note", "until", "at", "task",
+                                                   "folder", "resume", "meter")})
     cfg = load_settings()
     rang = []
     changed = job["state"] in RINGS and before.get("state") != job["state"]
@@ -350,6 +359,29 @@ def put(job: dict, words: dict, lang: str, now: float | None = None, quiet: bool
     write_page(cfg, words, lang)
     job["rang"] = rang
     return job
+
+
+@contextlib.contextmanager
+def job_lock(job_id: str):
+    """An exclusive lock for one job's file (fcntl where there is one; elsewhere the write itself is atomic)."""
+    handle = None
+    try:
+        folder().mkdir(parents=True, exist_ok=True)
+        handle = open(folder() / f".{safe_id(job_id)}.lock", "a")
+        if fcntl:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+    except OSError:
+        pass
+    try:
+        yield
+    finally:
+        if handle:
+            try:
+                if fcntl:
+                    fcntl.flock(handle, fcntl.LOCK_UN)
+                handle.close()
+            except OSError:
+                pass
 
 
 def drop(job_id: str, words: dict, lang: str) -> None:
@@ -440,6 +472,18 @@ def from_hook(hook: dict, words: dict, lang: str) -> dict | None:
         rcfg = remote.load()
         if kind == "permission_prompt" and rcfg.get("away") and remote.channels(rcfg, words):
             return put(job, words, lang, quiet=True)     # the approval card itself is the ring
+        return put(job, words, lang, later=True)
+    elif event == "StopFailure":
+        # the turn ended on an API error (Claude Code's own event): a spent limit rests with its hour, anything
+        # else stops - the board no longer says "working" until the next prompt
+        kind = str(hook.get("error_type") or hook.get("error") or "unknown")
+        said, _own = last_words(transcript_tail(hook.get("transcript_path") or ""))
+        text = " ".join(str(hook.get(k) or "") for k in ("error_message", "message", "error_details")) + " " + said
+        if kind == "rate_limit":
+            found = RESETS.search(text)
+            job.update(state="limit", until=found.group(1).strip() if found else "", note=said or kind)
+        else:
+            job.update(state="failed", note=words["board_api_error"].format(kind=kind))
         return put(job, words, lang, later=True)
     elif event == "Stop":
         said, own = last_words(transcript_tail(hook.get("transcript_path") or ""))

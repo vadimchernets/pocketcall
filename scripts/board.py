@@ -123,6 +123,8 @@ def _write(path: Path, data) -> None:
 
 
 CARD = ("steps", "checks", "last", "waits")
+# what a put that does not pass it leaves as it was: the night's kind, length, end, box and meter, and its folder
+KEPT = ("folder", "kind", "hours", "end", "box", "meter")
 
 
 def _count(value) -> int:
@@ -380,12 +382,14 @@ def put(job: dict, words: dict, lang: str, now: float | None = None, quiet: bool
     job["note"] = short(job.get("note"))
     job["task"] = short(job.get("task"))
     job["at"] = now
-    job["meter"] = short(job.get("meter"))
     with job_lock(job["id"]):                          # a job that sends no card keeps the one it had
         kept = get(job["id"])
-    for key in CARD:
+    for key in CARD + KEPT:
         if key not in job:
             job[key] = kept.get(key, "")
+    job["meter"] = short(job.get("meter"))
+    if not job.get("until"):                         # a stale end time is kept only while the job still works
+        job["until"] = kept.get("until", "") if job.get("state") == "working" else ""
     job["last"] = short(job.get("last"))
     job["steps"] = short(job.get("steps"), 16)
     job["checks"] = short(job.get("checks"), 16)
@@ -653,10 +657,12 @@ def main(argv=None) -> int:
         ring(args.text, load_settings())
         return 0
     if args.cmd == "put":
+        given = {"folder": args.folder, "kind": args.kind, "hours": args.hours or "", "end": args.end or "",
+                 "box": True if args.box else "", "meter": args.meter}
         job = put({"id": args.id or args.name, "name": args.name, "where": args.where,
-                   "state": args.state, "note": args.note, "until": args.until, "folder": args.folder,
-                   "kind": args.kind, "hours": args.hours or "", "end": args.end or "", "box": bool(args.box),
-                   "meter": args.meter, **{k: getattr(args, k) for k in CARD if getattr(args, k) is not None}},
+                   "state": args.state, "note": args.note, "until": args.until,
+                   **{k: v for k, v in given.items() if v != ""},
+                   **{k: getattr(args, k) for k in CARD if getattr(args, k) is not None}},
                   words, lang, force=args.ring, say=args.say)
         print(line_of(job, words))
         if job["rang"]:

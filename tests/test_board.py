@@ -267,6 +267,15 @@ class TestPutShowPage(BoardCase):
         self.run_cli("put", "--name", "other", "--state", "working", "--last", "hello")
         self.assertEqual(board.get("other")["last"], "hello")
 
+    def test_a_put_without_the_night_fields_keeps_kind_hours_end_box_and_meter(self):
+        self.run_cli("put", "--name", "night", "--state", "working", "--folder", "/tmp/x", "--kind", "night",
+                     "--hours", "8", "--end", "1900000000", "--box", "--meter", "a 3%")
+        self.run_cli("put", "--name", "night", "--state", "failed", "--steps", "2/4")
+        job = board.get("night")
+        self.assertEqual((job["kind"], job["hours"], job["end"], job["box"], job["meter"], job["folder"]),
+                         ("night", 8.0, 1900000000.0, True, "a 3%", "/tmp/x"))
+        self.assertEqual(job["steps"], "2/4")
+
     def test_a_job_with_no_card_shows_none(self):
         self.run_cli("put", "--name", "plain", "--state", "working")
         self.assertNotIn("chips", board.page_html(WORDS, "en").split("</style>")[1])

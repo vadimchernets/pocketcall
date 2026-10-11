@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **One task card per job, the same on the laptop and the phone.** `board.py put --steps 3/7 --checks 2/5 --last "<text>"
+  --waits N` (also the same keys in the job file): how far the job is, what was checked, the last thing it did and how
+  many things wait for the person. The phone page shows them under the job (chips, the last action, and the way to
+  Stop / Continue); a put without a card keeps the card the job had, an explicit empty one clears it. Nightcall's
+  `status.py push` fills it after every round of a night. Words in five languages (`board_steps`, `board_checks`,
+  `board_last`, `board_waits`, `board_card_steer`). Tests in `tests/test_board.py`.
+
 ## 0.5.0 — 2026-10-07
 
 - **Steer long work from the phone.** New `scripts/steer.py`: a board ring for a job with a task folder carries

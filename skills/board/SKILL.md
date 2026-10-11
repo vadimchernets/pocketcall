@@ -31,6 +31,14 @@ words, the waiting ones first, with the folder each one is in: "Two jobs wait fo
 asks to run the tests) and the book (it asks a question). The report is done. The site rests on a
 limit until 18:00 and goes on by itself."
 
+## The task card - what the laptop is doing
+
+A job may carry a card, and the phone page shows it under the job: `put --steps 3/7 --checks 2/5 --last "<the last
+thing it did>" --waits N` - how far it is, what was checked, the last action, how many things wait for the person. A
+night run fills it by itself after each round (nightcall's `/nightcall:status`). When the person asks what the laptop
+is doing, read the card out in plain words: the state, the last action, how far, what waits for them - then the way to
+Stop or Continue.
+
 ## The phone rings - set once
 
 Ask which of the two the person already has; one is enough, both work together.

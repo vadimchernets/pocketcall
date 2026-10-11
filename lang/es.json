@@ -260,5 +260,10 @@
   "steer_no_telegram": "Primero el Telegram del teléfono: remote.py telegram --token <token del bot> --allow <tu id de Telegram>.",
   "steer_listening": "Escuchando el teléfono: Continúa / Para, notas de voz y \"tarea: ...\".",
   "steer_inbox_set": "Las tareas del teléfono llegan a {folder}; se inician con: {start}",
-  "board_api_error": "el turno terminó con un error ({kind})"
+  "board_api_error": "el turno terminó con un error ({kind})",
+  "board_steps": "pasos {n}",
+  "board_checks": "comprobaciones {n}",
+  "board_last": "Último: {text}",
+  "board_waits": "{n} esperan tu respuesta",
+  "board_card_steer": "Parar y Continuar: los botones en Telegram, o escribe \"stop\" / \"continuar\"."
 }

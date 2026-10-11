@@ -260,5 +260,10 @@
   "steer_no_telegram": "Спершу Telegram телефона: remote.py telegram --token <токен бота> --allow <ваш id у Telegram>.",
   "steer_listening": "Слухаю телефон: «Продовжуй» / «Стоп», голосові та «тз: ...».",
   "steer_inbox_set": "Задачі з телефона потрапляють у {folder}; запуск одразу: {start}",
-  "board_api_error": "хід обірвався на помилці ({kind})"
+  "board_api_error": "хід обірвався на помилці ({kind})",
+  "board_steps": "кроків {n}",
+  "board_checks": "перевірок {n}",
+  "board_last": "Останнє: {text}",
+  "board_waits": "чекають на вас: {n}",
+  "board_card_steer": "Стоп і Продовжити: кнопки в Telegram або напишіть «стоп» / «продовжи»."
 }

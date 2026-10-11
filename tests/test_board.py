@@ -235,6 +235,42 @@ class TestPutShowPage(BoardCase):
         self.assertIn("Working - night run: book (nightcall)", text)
         self.assertEqual(json.loads(self.run_cli("show", "--json")[1])[0]["state"], "waiting")
 
+    def test_the_task_card_shows_how_far_what_was_checked_the_last_action_and_what_waits(self):
+        shared = os.path.join(self.tmp, "Drive")
+        os.makedirs(shared)
+        self.run_cli("page", "--to", shared)
+        self.run_cli("put", "--name", "night run: book", "--where", "nightcall", "--state", "working",
+                     "--folder", self.tmp, "--steps", "3/7", "--checks", "2/5",
+                     "--last", "01:40 step 3 <b>chapter</b> written", "--waits", "2")
+        job = board.get("night run--book")
+        self.assertEqual((job["steps"], job["checks"], job["waits"]), ("3/7", "2/5", 2))
+        text = (Path(shared) / board.PAGE).read_text(encoding="utf-8")
+        self.assertIn("steps 3/7", text)
+        self.assertIn("checks 2/5", text)
+        self.assertIn("2 wait for you", text)
+        self.assertIn("Last: 01:40 step 3 &lt;b&gt;chapter&lt;/b&gt; written", text)
+        self.assertNotIn("<b>chapter", text)
+        self.assertIn("Stop and Continue", text)               # the way to steer is on the card itself
+        ru = board.page_html(check.lang_words("ru"), "ru")
+        self.assertIn("\u0448\u0430\u0433\u043e\u0432 3/7", ru)
+        self.assertIn("\u0436\u0434\u0443\u0442 \u0432\u0430\u0441: 2", ru)
+
+    def test_a_put_without_a_card_keeps_the_card_it_had_and_an_empty_one_clears_it(self):
+        self.run_cli("put", "--name", "night", "--state", "working", "--steps", "1/4", "--waits", "1")
+        self.run_cli("put", "--name", "night", "--state", "working", "--note", "next round")
+        job = board.get("night")
+        self.assertEqual((job["steps"], job["waits"], job["note"]), ("1/4", 1, "next round"))
+        self.run_cli("put", "--name", "night", "--state", "done", "--steps", "", "--waits", "0")
+        job = board.get("night")
+        self.assertEqual((job["steps"], job["waits"]), ("", 0))
+        # a hook of the same board never wipes it either
+        self.run_cli("put", "--name", "other", "--state", "working", "--last", "hello")
+        self.assertEqual(board.get("other")["last"], "hello")
+
+    def test_a_job_with_no_card_shows_none(self):
+        self.run_cli("put", "--name", "plain", "--state", "working")
+        self.assertNotIn("chips", board.page_html(WORDS, "en").split("</style>")[1])
+
     def test_the_same_name_is_the_same_line(self):
         self.run_cli("put", "--name", "night run", "--state", "working")
         self.run_cli("put", "--name", "night run", "--state", "done")

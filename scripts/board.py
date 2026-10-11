@@ -27,6 +27,10 @@ you: a job waits for an answer, a job is done, a job rests on a limit (with the 
                                             box - and steer.py builds the Continue command itself, with no
                                             shell; --meter shows how much each subscription has left;
                                             --say rings this line now (a change of hands, say)
+    board.py put ... [--steps 3/7] [--checks 2/5] [--last <text>] [--waits N]
+                                            the job's task card, one per job, the same on the computer and on the
+                                            phone page: how far it is, what was checked, the last thing it did,
+                                            how many things wait for the person (nightcall's status.py fills it)
     board.py clear [--all]                  drop finished jobs (all jobs with --all)
     board.py hook                           the plugin's hook (UserPromptSubmit, Notification, PostToolUse,
                                             Stop, SessionEnd): Claude Code sessions report themselves
@@ -118,6 +122,16 @@ def _write(path: Path, data) -> None:
         raise
 
 
+CARD = ("steps", "checks", "last", "waits")
+
+
+def _count(value) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 def safe_id(text: str) -> str:
     return ID.sub("-", str(text or ""))[:64] or "job"
 
@@ -186,6 +200,26 @@ def line_of(job: dict, words: dict, now: float | None = None) -> str:
     return text
 
 
+def card_html(job: dict, words: dict) -> str:
+    """The job's task card for the phone page: how far, what was checked, the last action, what waits for the person."""
+    esc = html.escape
+    chips = []
+    if job.get("steps"):
+        chips.append(words["board_steps"].format(n=job["steps"]))
+    if job.get("checks"):
+        chips.append(words["board_checks"].format(n=job["checks"]))
+    waits = _count(job.get("waits"))
+    out = ""
+    if chips or waits:
+        out += '<span class="chips">' + "".join(f"<i>{esc(c)}</i>" for c in chips)
+        out += (f'<i class="wait">{esc(words["board_waits"].format(n=waits))}</i>' if waits else "") + "</span>"
+    if job.get("last"):
+        out += f'<span class="last">{esc(words["board_last"].format(text=job["last"]))}</span>'
+    if job.get("folder") and job.get("state") in ("working", "failed", "limit"):
+        out += f'<span class="steer">{esc(words["board_card_steer"])}</span>'
+    return out
+
+
 METER = re.compile(r"([^·%?]+?)\s+(\d{1,3})%")
 
 
@@ -229,6 +263,7 @@ def page_html(words: dict, lang: str, now: float | None = None) -> str:
             + (f'<span class="where">{esc(str(where))}</span>' if where else "")
             + f'<span class="ago">{esc(ago(now - float(job.get("at") or now), words))}</span>'
             + (f'<span class="note">{esc(str(job["note"]))}</span>' if job.get("note") else "")
+            + card_html(job, words)
             + meter_html(job.get("meter"))
             + "</li>")
     body = "<ul>" + "".join(rows) + "</ul>" if rows else f'<p class="empty">{esc(words["board_empty"])}</p>'
@@ -253,6 +288,10 @@ li b{{color:var(--c);width:100%}} .name{{font-weight:600}} .where,.ago{{color:va
 .note{{width:100%;color:var(--mute);font-size:14px;overflow-wrap:anywhere}}
 .waiting{{--c:var(--waiting)}} .limit{{--c:var(--limit)}} .failed{{--c:var(--failed)}}
 .working{{--c:var(--working)}} .done{{--c:var(--done)}} .empty{{color:var(--mute)}}
+.chips{{width:100%;display:flex;flex-wrap:wrap;gap:6px}}
+.chips i{{font-style:normal;font-size:13px;border:1px solid var(--line);border-radius:999px;padding:1px 8px}}
+.chips i.wait{{color:var(--waiting);border-color:var(--waiting)}}
+.last,.steer{{width:100%;font-size:14px;overflow-wrap:anywhere}} .steer{{color:var(--mute);font-size:13px}}
 .meter{{width:100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}}
 .bar{{position:relative;flex:1 1 120px;height:22px;border:1px solid var(--line);border-radius:6px;overflow:hidden}}
 .bar i{{position:absolute;inset:0 auto 0 0;background:var(--working);opacity:.25}}
@@ -342,13 +381,23 @@ def put(job: dict, words: dict, lang: str, now: float | None = None, quiet: bool
     job["task"] = short(job.get("task"))
     job["at"] = now
     job["meter"] = short(job.get("meter"))
+    with job_lock(job["id"]):                          # a job that sends no card keeps the one it had
+        kept = get(job["id"])
+    for key in CARD:
+        if key not in job:
+            job[key] = kept.get(key, "")
+    job["last"] = short(job.get("last"))
+    job["steps"] = short(job.get("steps"), 16)
+    job["checks"] = short(job.get("checks"), 16)
+    job["waits"] = _count(job.get("waits"))
     # two hooks of one session at the same moment (Stop and Notification, say) both read the old state and
     # both would ring: the read and the write of one job go under one lock, so only the first sees a change
     with job_lock(job["id"]):
         before = get(job["id"])
         _write(folder() / f"{job['id']}.json", {k: job.get(k, "") for k in
                                                   ("id", "name", "where", "state", "note", "until", "at", "task",
-                                                   "folder", "kind", "hours", "end", "box", "meter")})
+                                                   "folder", "kind", "hours", "end", "box", "meter",
+                                                   "steps", "checks", "last", "waits")})
     cfg = load_settings()
     rang = []
     changed = job["state"] in RINGS and before.get("state") != job["state"]
@@ -558,6 +607,10 @@ def main(argv=None) -> int:
     p.add_argument("--box", action="store_true", help="the night runs in nightcall's box: Continue keeps it there")
     p.add_argument("--meter", default="", help="how much each subscription has left, one line")
     p.add_argument("--say", action="store_true", help="ring this line now, even with no change of state")
+    p.add_argument("--steps", default=None, help="the task card: steps done, like 3/7")
+    p.add_argument("--checks", default=None, help="the task card: checks closed, like 2/5")
+    p.add_argument("--last", default=None, help="the task card: the last thing the job did")
+    p.add_argument("--waits", type=int, default=None, help="the task card: how many things wait for the person")
     rl = sub.add_parser("ring-line")
     rl.add_argument("text")
     g = sub.add_parser("page")
@@ -603,7 +656,8 @@ def main(argv=None) -> int:
         job = put({"id": args.id or args.name, "name": args.name, "where": args.where,
                    "state": args.state, "note": args.note, "until": args.until, "folder": args.folder,
                    "kind": args.kind, "hours": args.hours or "", "end": args.end or "", "box": bool(args.box),
-                   "meter": args.meter}, words, lang, force=args.ring, say=args.say)
+                   "meter": args.meter, **{k: getattr(args, k) for k in CARD if getattr(args, k) is not None}},
+                  words, lang, force=args.ring, say=args.say)
         print(line_of(job, words))
         if job["rang"]:
             print(words["board_rang"].format(where=", ".join(job["rang"])))

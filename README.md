@@ -290,6 +290,13 @@ rewritten at every change into the Google Drive / iCloud / Dropbox / OneDrive fo
 already sees: the board on the phone with no server at all. Any tool can also write its job file
 into `~/.pocketcall/board/` itself (the keys are in `scripts/board.py`). Standard library only.
 
+### The task card: what the laptop is doing, on the phone
+
+A job may carry a card - `put --steps 3/7 --checks 2/5 --last "chapter 3 written, 12 tests pass" --waits 2`. The phone page
+shows it under the job: how far, what was checked, the last action, how many things wait for you, and where Stop and
+Continue are. A night run from nightcall fills it itself after every round (`/nightcall:status`), together with its ledger
+"what the AI wanted - what you decided"; any other job may fill it the same way.
+
 ## Continue, Stop and a voice task from the phone
 
 The board's ring for a night run or a long build comes with **Continue** and **Stop** buttons in Telegram; "stop" or

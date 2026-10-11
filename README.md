@@ -11,7 +11,7 @@ discipline of answering someone who is reading four lines on a phone in a corrid
 
 Pocketcall is an independent open-source project. Not affiliated with Anthropic.
 
-**Status: v0.5.0.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
+**Status: v0.6.0.** Written for people who are not programmers — a lawyer, a nurse, a pastor, a
 teacher, a realtor, a bookkeeper — with a paid personal subscription, no API keys, no server, and
 no intention of acquiring either; and, since 0.3, for the same people on a work account, where
 the company decides what is allowed (see [At work](#at-work-four-branches)). It speaks English,

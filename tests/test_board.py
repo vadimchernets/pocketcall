@@ -247,7 +247,7 @@ class TestPutShowPage(BoardCase):
         text = (Path(shared) / board.PAGE).read_text(encoding="utf-8")
         self.assertIn("steps 3/7", text)
         self.assertIn("checks 2/5", text)
-        self.assertIn("2 wait for you", text)
+        self.assertIn("waiting for you: 2", text)
         self.assertIn("Last: 01:40 step 3 &lt;b&gt;chapter&lt;/b&gt; written", text)
         self.assertNotIn("<b>chapter", text)
         self.assertIn("Stop and Continue", text)               # the way to steer is on the card itself
@@ -275,6 +275,22 @@ class TestPutShowPage(BoardCase):
         self.assertEqual((job["kind"], job["hours"], job["end"], job["box"], job["meter"], job["folder"]),
                          ("night", 8.0, 1900000000.0, True, "a 3%", "/tmp/x"))
         self.assertEqual(job["steps"], "2/4")
+
+    def test_a_new_night_without_box_on_the_same_id_is_not_continued_in_the_box(self):
+        # a box night, then a plain night under the same job id: Continue from the phone must not put it in the box
+        self.run_cli("put", "--name", "night", "--state", "working", "--folder", "/tmp/x", "--kind", "night",
+                     "--hours", "8", "--end", "1900000000", "--box")
+        self.assertIs(board.get("night")["box"], True)
+        self.run_cli("put", "--name", "night", "--state", "working", "--folder", "/tmp/x", "--kind", "night",
+                     "--hours", "4", "--end", "1900000100")
+        self.assertIs(board.get("night")["box"], False)
+        # a round's put with no night fields still keeps what the night said
+        self.run_cli("put", "--name", "night", "--state", "working", "--steps", "1/3")
+        self.assertIs(board.get("night")["box"], False)
+        self.run_cli("put", "--name", "night", "--state", "working", "--kind", "night", "--hours", "4",
+                     "--end", "1900000100", "--box")
+        self.run_cli("put", "--name", "night", "--state", "working", "--steps", "2/3")
+        self.assertIs(board.get("night")["box"], True)
 
     def test_a_job_with_no_card_shows_none(self):
         self.run_cli("put", "--name", "plain", "--state", "working")

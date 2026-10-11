@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 — 2026-10-11
 
 - **One task card per job, the same on the laptop and the phone.** `board.py put --steps 3/7 --checks 2/5 --last "<text>"
   --waits N` (also the same keys in the job file): how far the job is, what was checked, the last thing it did and how
@@ -8,6 +8,11 @@
   Stop / Continue); a put without a card keeps the card the job had, an explicit empty one clears it. Nightcall's
   `status.py push` fills it after every round of a night. Words in five languages (`board_steps`, `board_checks`,
   `board_last`, `board_waits`, `board_card_steer`). Tests in `tests/test_board.py`.
+- A put that describes a night (`--kind` or `--end`) now says where it runs: without `--box` the job's `box` is
+  reset to false, so a plain night started under the same job id after a box night is no longer continued in the box
+  from the phone. A round's put with no night fields still keeps what the night set. The read of the kept card, the
+  merge and the write of one job now go under one lock, so a put that slips in between loses no fields. Tests in
+  `tests/test_board.py`.
 
 ## 0.5.0 — 2026-10-07
 

@@ -267,6 +267,6 @@
   "board_steps": "steps {n}",
   "board_checks": "checks {n}",
   "board_last": "Last: {text}",
-  "board_waits": "{n} wait for you",
+  "board_waits": "waiting for you: {n}",
   "board_card_steer": "Stop and Continue: the buttons in Telegram, or type \"stop\" / \"continue\"."
 }

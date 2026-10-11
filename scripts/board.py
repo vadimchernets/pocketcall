@@ -382,22 +382,21 @@ def put(job: dict, words: dict, lang: str, now: float | None = None, quiet: bool
     job["note"] = short(job.get("note"))
     job["task"] = short(job.get("task"))
     job["at"] = now
-    with job_lock(job["id"]):                          # a job that sends no card keeps the one it had
-        kept = get(job["id"])
-    for key in CARD + KEPT:
-        if key not in job:
-            job[key] = kept.get(key, "")
-    job["meter"] = short(job.get("meter"))
-    if not job.get("until"):                         # a stale end time is kept only while the job still works
-        job["until"] = kept.get("until", "") if job.get("state") == "working" else ""
-    job["last"] = short(job.get("last"))
-    job["steps"] = short(job.get("steps"), 16)
-    job["checks"] = short(job.get("checks"), 16)
-    job["waits"] = _count(job.get("waits"))
-    # two hooks of one session at the same moment (Stop and Notification, say) both read the old state and
-    # both would ring: the read and the write of one job go under one lock, so only the first sees a change
+    # One lock around the read of the kept card, the merge and the write: a put that slips in between would
+    # lose fields, and two hooks of one session at the same moment (Stop and Notification, say) both read the
+    # old state and both would ring, so only the first sees a change.
     with job_lock(job["id"]):
-        before = get(job["id"])
+        kept = before = get(job["id"])             # a job that sends no card keeps the one it had
+        for key in CARD + KEPT:
+            if key not in job:
+                job[key] = kept.get(key, "")
+        job["meter"] = short(job.get("meter"))
+        if not job.get("until"):                         # a stale end time is kept only while the job still works
+            job["until"] = kept.get("until", "") if job.get("state") == "working" else ""
+        job["last"] = short(job.get("last"))
+        job["steps"] = short(job.get("steps"), 16)
+        job["checks"] = short(job.get("checks"), 16)
+        job["waits"] = _count(job.get("waits"))
         _write(folder() / f"{job['id']}.json", {k: job.get(k, "") for k in
                                                   ("id", "name", "where", "state", "note", "until", "at", "task",
                                                    "folder", "kind", "hours", "end", "box", "meter",
@@ -659,6 +658,8 @@ def main(argv=None) -> int:
     if args.cmd == "put":
         given = {"folder": args.folder, "kind": args.kind, "hours": args.hours or "", "end": args.end or "",
                  "box": True if args.box else "", "meter": args.meter}
+        if args.kind or args.end:                        # a put that describes the night says where it runs: no
+            given["box"] = bool(args.box)                # --box means outside the box, not "as the last night was"
         job = put({"id": args.id or args.name, "name": args.name, "where": args.where,
                    "state": args.state, "note": args.note, "until": args.until,
                    **{k: v for k, v in given.items() if v != ""},

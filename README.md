@@ -1,5 +1,7 @@
 # Pocketcall
 
+> Poly helped? [Give it a star on GitHub](https://github.com/vadimchernets/pocketcall) - one click. The plugin is open to everyone either way.
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23107735.svg)](https://doi.org/10.5281/zenodo.23107735)
 
 **Leave the computer working, take the phone, and do not find out in town that it never

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1 — 2026-11-10
+
+- README only: the catalogue is added from its release file (https://github.com/vadimchernets/poly-a1-plugins/releases/latest/download/marketplace.json), so every install counts as a download of the release; the raw address stays as the fallback. A line asks for a star. No skill changes.
+
 ## 0.6.0 — 2026-10-11
 
 - **One task card per job, the same on the laptop and the phone.** `board.py put --steps 3/7 --checks 2/5 --last "<text>"
